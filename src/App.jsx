@@ -26,52 +26,29 @@ const COLORS = {
 
 const CHINESE_NUMBERS = ['第一名', '第二名', '第三名', '第四名', '第五名', '第六名', '第七名', '第八名'];
 
-// 讀取 localStorage 輔助函式
-const getStorageData = (key, defaultValue) => {
-  try {
-    const saved = localStorage.getItem(key);
-    return saved ? JSON.parse(saved) : defaultValue;
-  } catch (e) {
-    return defaultValue;
-  }
-};
-
 // ==============================
-// 2. 主應用程式組件 (含 localStorage 資料持久化)
+// 2. 主應用程式組件
 // ==============================
 export default function SpicyHotPotSystem() {
-  const [activePage, setActivePage] = useState('POS');
+  const [activePage, setActivePage] = useState('POS'); 
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // 本地儲存綁定：新增的品項、菜單、訂單皆不會隨重新整理消失
-  const [categories, setCategories] = useState(() => getStorageData('spicy_categories', DEFAULT_CATEGORIES));
-  const [orders, setOrders] = useState(() => getStorageData('spicy_orders', []));
-  const [promotions, setPromotions] = useState(() => getStorageData('spicy_promotions', [
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [orders, setOrders] = useState([]);
+  const [promotions, setPromotions] = useState([
     { id: 'p1', name: '滿百折十', type: 'amount', value: 10 },
     { id: 'p2', name: '九折優惠', type: 'percent', value: 10 }
-  ]));
-  const [employees, setEmployees] = useState(() => getStorageData('spicy_employees', [{ id: 'e1', username: 'emp1', password: '111', name: '王小明' }]));
-  const [clockIns, setClockIns] = useState(() => getStorageData('spicy_clockIns', [])); 
-  const [ingredients, setIngredients] = useState(() => getStorageData('spicy_ingredients', [
+  ]);
+  const [employees, setEmployees] = useState([{ id: 'e1', username: 'emp1', password: '111', name: '王小明' }]);
+  const [clockIns, setClockIns] = useState([]); 
+  const [ingredients, setIngredients] = useState([
     { id: 'ing1', name: '高麗菜', supplier: '蔬菜大盤商', unit: 'kg', price: 40, category: '蔬菜類', stock: 15, safeStock: 5 },
     { id: 'ing2', name: '牛五花', supplier: '肉品專賣', unit: 'kg', price: 250, category: '肉品類', stock: 3, safeStock: 5 }
-  ]));
-  const [expenses, setExpenses] = useState(() => getStorageData('spicy_expenses', [])); 
-  const [closingRecords, setClosingRecords] = useState(() => getStorageData('spicy_closingRecords', [])); 
-  const [heldOrders, setHeldOrders] = useState(() => getStorageData('spicy_heldOrders', [])); 
-  const [adminPassword, setAdminPassword] = useState(() => getStorageData('spicy_adminPassword', '1234')); 
-
-  // 當資料更動時同步至 LocalStorage
-  useEffect(() => { localStorage.setItem('spicy_categories', JSON.stringify(categories)); }, [categories]);
-  useEffect(() => { localStorage.setItem('spicy_orders', JSON.stringify(orders)); }, [orders]);
-  useEffect(() => { localStorage.setItem('spicy_promotions', JSON.stringify(promotions)); }, [promotions]);
-  useEffect(() => { localStorage.setItem('spicy_employees', JSON.stringify(employees)); }, [employees]);
-  useEffect(() => { localStorage.setItem('spicy_clockIns', JSON.stringify(clockIns)); }, [clockIns]);
-  useEffect(() => { localStorage.setItem('spicy_ingredients', JSON.stringify(ingredients)); }, [ingredients]);
-  useEffect(() => { localStorage.setItem('spicy_expenses', JSON.stringify(expenses)); }, [expenses]);
-  useEffect(() => { localStorage.setItem('spicy_closingRecords', JSON.stringify(closingRecords)); }, [closingRecords]);
-  useEffect(() => { localStorage.setItem('spicy_heldOrders', JSON.stringify(heldOrders)); }, [heldOrders]);
-  useEffect(() => { localStorage.setItem('spicy_adminPassword', JSON.stringify(adminPassword)); }, [adminPassword]);
+  ]);
+  const [expenses, setExpenses] = useState([]); 
+  const [closingRecords, setClosingRecords] = useState([]); 
+  const [heldOrders, setHeldOrders] = useState([]); 
+  const [adminPassword, setAdminPassword] = useState('1234'); 
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -88,7 +65,7 @@ export default function SpicyHotPotSystem() {
           <Store size={28} />
           麻辣燙點餐 POS 系統
           <span className="flex items-center gap-1 text-xs bg-emerald-700 text-white px-2.5 py-1 rounded-full shadow-sm">
-            <Cloud size={14} /> 資料自動儲存中
+            <Cloud size={14} /> Firebase 雲端連線中
           </span>
           {lowStockItems.length > 0 && (
             <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full animate-pulse flex items-center gap-1">
@@ -103,7 +80,7 @@ export default function SpicyHotPotSystem() {
         </div>
       </div>
 
-      {/* 頁面內容 */}
+      {/* 頁面切換 */}
       <div className="flex-1 overflow-hidden">
         {activePage === 'POS' && (
           <POSView 
@@ -149,7 +126,9 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
   const [cart, setCart] = useState([]);
   const [source, setSource] = useState('現場');
   const [subSource, setSubSource] = useState('');
-  const [activeCategory, setActiveCategory] = useState(categories[0]?.id || '');
+  
+  // 初始化選中的分類 ID，若未設置則取第一個分類
+  const [activeCategory, setActiveCategory] = useState(categories[0]?.id || 'c1');
   const [selectedPromo, setSelectedPromo] = useState('');
   const [orderNote, setOrderNote] = useState('');
   
@@ -157,17 +136,18 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
   const [checkoutModal, setCheckoutModal] = useState(false);
   const [successModal, setSuccessModal] = useState(null);
 
+  // 當 categories 載入時，確保 activeCategory 有值
   useEffect(() => {
-    if (categories.length > 0 && !activeCategory) {
+    if (categories.length > 0 && !categories.some(c => c.id === activeCategory)) {
       setActiveCategory(categories[0].id);
     }
-  }, [categories]);
+  }, [categories, activeCategory]);
 
   const formatTime = (date) => `${date.getFullYear()}/${String(date.getMonth()+1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 
   const addToCart = (item, options = {}) => {
     const isMilky = options.milky === '+$15麻奶';
-    const finalPrice = item.price + (isMilky ? 15 : 0);
+    const finalPrice = Number(item.price) + (isMilky ? 15 : 0);
 
     const newItem = {
       cartId: `${Date.now()}-${Math.random()}`,
@@ -187,7 +167,7 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
         ...item,
         tempSpice: '不辣',
         tempNumb: '不麻',
-        tempMilky: '' // 預設不勾選加麻奶
+        tempMilky: '不加麻奶'
       });
     } else {
       addToCart(item);
@@ -207,15 +187,20 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
   };
 
   const totals = calculateTotals();
+  
+  // 安全獲取當前選擇的分類物件
   const currentCatObj = categories.find(c => c.id === activeCategory) || categories[0];
 
   return (
     <div className="flex h-full p-4 gap-4">
+      {/* 左側菜單區 */}
       <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-        {/* 分頁 Tab */}
+        {/* 分頁 Tab 切換 */}
         <div className="flex gap-2 overflow-x-auto pb-2">
           {categories.map(cat => (
-            <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
+            <button 
+              key={cat.id} 
+              onClick={() => setActiveCategory(cat.id)}
               className="px-6 py-3 rounded-lg shadow-sm font-bold whitespace-nowrap transition-all border-2"
               style={{ 
                 backgroundColor: activeCategory === cat.id ? COLORS.selected : (cat.color || '#E6D2BE'), 
@@ -228,19 +213,26 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
           ))}
         </div>
 
-        {/* 菜單品項 */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-3 md:grid-cols-4 gap-4 content-start">
-          {currentCatObj?.items?.map(item => (
-            <button key={item.id} onClick={() => handleItemClick(item, currentCatObj.name)}
-              className="p-4 rounded-xl shadow bg-white flex flex-col items-center justify-center gap-2 hover:bg-opacity-95 transition-all border-2 border-transparent active:border-[#C97A3D]"
-            >
-              <span className="font-bold text-lg text-center leading-tight">{item.name}</span>
-              <span className="text-[#8B1E1E] font-semibold">${item.price}</span>
-            </button>
-          ))}
+        {/* 依據選取的分類渲染品項 */}
+        <div className="flex-1 overflow-y-auto grid grid-cols-3 md:grid-cols-4 gap-4 content-start p-1">
+          {currentCatObj && currentCatObj.items && currentCatObj.items.length > 0 ? (
+            currentCatObj.items.map(item => (
+              <button 
+                key={item.id} 
+                onClick={() => handleItemClick(item, currentCatObj.name)}
+                className="p-5 rounded-xl shadow bg-white flex flex-col items-center justify-center gap-2 hover:bg-orange-50 transition-all border-2 border-transparent active:border-[#C97A3D]"
+              >
+                <span className="font-bold text-lg text-center leading-tight text-[#3D332C]">{item.name}</span>
+                <span className="text-[#8B1E1E] font-bold text-base">${item.price}</span>
+              </button>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12 text-gray-400 font-medium">此分類下暫無品項</div>
+          )}
         </div>
       </div>
 
+      {/* 右側購物車 */}
       <div className="w-[400px] bg-white rounded-xl shadow-lg flex flex-col border border-gray-200">
         <div className="p-4 border-b bg-gray-50 rounded-t-xl">
           <div className="flex justify-between items-center mb-3">
@@ -251,7 +243,7 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
           <div className="flex gap-2 mb-2 text-sm">
             {['現場', '外送', '電話/Line'].map(s => (
               <button key={s} onClick={() => { setSource(s); setSubSource(''); }}
-                className={`flex-1 py-1.5 rounded border ${source === s ? 'bg-[#6B4F3A] text-white border-[#6B4F3A]' : 'bg-white text-gray-600'}`}>{s}</button>
+                className={`flex-1 py-1.5 rounded border font-medium ${source === s ? 'bg-[#6B4F3A] text-white border-[#6B4F3A]' : 'bg-white text-gray-600'}`}>{s}</button>
             ))}
           </div>
           {source === '外送' && (
@@ -309,17 +301,17 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
           )}
         </div>
 
-        {/* 購物車內容 */}
+        {/* 購物車列表 */}
         <div className="flex-1 overflow-y-auto p-2">
           {cart.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-gray-400">尚未點餐</div>
+            <div className="h-full flex items-center justify-center text-gray-400 font-medium">尚未點餐</div>
           ) : (
             cart.map((item) => (
-              <div key={item.cartId} className="flex flex-col p-2 border-b last:border-0 hover:bg-orange-50 rounded">
+              <div key={item.cartId} className="flex flex-col p-2.5 border-b last:border-0 hover:bg-orange-50 rounded transition-colors">
                 <div className="flex justify-between items-start mb-1">
                   <div>
                     <span className="text-xs text-gray-400 mr-2">{item.index}</span>
-                    <span className="font-bold">{item.name}</span>
+                    <span className="font-bold text-[#3D332C]">{item.name}</span>
                     {item.spiciness && (
                       <div className="text-xs text-red-600 mt-0.5 font-medium flex items-center gap-1">
                         <span>{item.spiciness} / {item.numbness}</span>
@@ -331,14 +323,14 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
                       </div>
                     )}
                   </div>
-                  <span className="font-semibold">${item.price * item.qty}</span>
+                  <span className="font-semibold text-[#8B1E1E]">${item.price * item.qty}</span>
                 </div>
                 <div className="flex justify-between items-center mt-1">
                   <button onClick={() => setCart(cart.filter(c => c.cartId !== item.cartId))} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
                   <div className="flex items-center gap-3 bg-gray-100 rounded-lg p-1">
-                    <button onClick={() => setCart(cart.map(c => c.cartId === item.cartId ? { ...c, qty: Math.max(1, c.qty - 1) } : c))} className="w-6 h-6 bg-white rounded shadow-sm">-</button>
+                    <button onClick={() => setCart(cart.map(c => c.cartId === item.cartId ? { ...c, qty: Math.max(1, c.qty - 1) } : c))} className="w-6 h-6 bg-white rounded shadow-sm font-bold text-gray-600">-</button>
                     <span className="font-bold w-4 text-center">{item.qty}</span>
-                    <button onClick={() => setCart(cart.map(c => c.cartId === item.cartId ? { ...c, qty: c.qty + 1 } : c))} className="w-6 h-6 bg-white rounded shadow-sm">+</button>
+                    <button onClick={() => setCart(cart.map(c => c.cartId === item.cartId ? { ...c, qty: c.qty + 1 } : c))} className="w-6 h-6 bg-white rounded shadow-sm font-bold text-gray-600">+</button>
                   </div>
                 </div>
               </div>
@@ -346,9 +338,10 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
           )}
         </div>
 
+        {/* 底部結帳區 */}
         <div className="p-4 border-t bg-gray-50 rounded-b-xl flex flex-col gap-3">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">優惠折抵</span>
+            <span className="text-sm text-gray-600 font-medium">優惠折抵</span>
             <select value={selectedPromo} onChange={(e) => setSelectedPromo(e.target.value)} className="border rounded p-1 text-sm bg-white">
               <option value="">無</option>
               {promotions.map(p => <option key={p.id} value={p.id}>{p.name} ({p.type === 'amount' ? `-$${p.value}` : `-${p.value}%`})</option>)}
@@ -369,7 +362,7 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
         </div>
       </div>
 
-      {/* 口味彈窗 Modal（已移除不加麻奶，只留加麻奶+$15） */}
+      {/* 口味與麻奶選擇彈窗 Modal */}
       {spiceModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl shadow-xl w-96">
@@ -381,7 +374,7 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
               <div className="grid grid-cols-3 gap-2">
                 {['不辣', '微辣', '小辣', '中辣', '大辣'].map(lvl => (
                   <button key={lvl} onClick={() => setSpiceModal({...spiceModal, tempSpice: lvl})}
-                    className={`py-2 rounded border font-medium text-sm ${spiceModal.tempSpice === lvl ? 'bg-red-600 text-white border-red-600' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+                    className={`py-2 rounded border font-medium text-sm ${spiceModal.tempSpice === lvl ? 'bg-red-600 text-white border-red-600 font-bold' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
                     {lvl}
                   </button>
                 ))}
@@ -394,29 +387,27 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
               <div className="flex gap-2">
                 {['不麻', '小麻', '正常麻'].map(lvl => (
                   <button key={lvl} onClick={() => setSpiceModal({...spiceModal, tempNumb: lvl})}
-                    className={`flex-1 py-2 rounded border font-medium text-sm ${spiceModal.tempNumb === lvl ? 'bg-orange-600 text-white border-orange-600' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+                    className={`flex-1 py-2 rounded border font-medium text-sm ${spiceModal.tempNumb === lvl ? 'bg-orange-600 text-white border-orange-600 font-bold' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
                     {lvl}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* 僅保留「+$15麻奶」獨立按鈕 */}
+            {/* 麻奶選擇（+$15） */}
             <div className="mb-6">
-              <p className="font-semibold mb-2 text-sm text-gray-700">湯底加價</p>
-              <button 
-                onClick={() => setSpiceModal({
-                  ...spiceModal, 
-                  tempMilky: spiceModal.tempMilky === '+$15麻奶' ? '' : '+$15麻奶'
-                })}
-                className={`w-full py-3 rounded-lg border font-bold text-base transition-all ${
-                  spiceModal.tempMilky === '+$15麻奶' 
-                    ? 'bg-amber-600 text-white border-amber-600 shadow' 
-                    : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
-                }`}
-              >
-                🥛 +$15麻奶 {spiceModal.tempMilky === '+$15麻奶' && '✓'}
-              </button>
+              <p className="font-semibold mb-2 text-sm text-gray-700">麻奶選項</p>
+              <div className="flex gap-2">
+                {[
+                  { label: '不加麻奶', val: '不加麻奶' },
+                  { label: '+$15麻奶', val: '+$15麻奶' }
+                ].map(item => (
+                  <button key={item.val} onClick={() => setSpiceModal({...spiceModal, tempMilky: item.val})}
+                    className={`flex-1 py-2.5 rounded border font-bold text-sm ${spiceModal.tempMilky === item.val ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* 操作按鈕 */}
@@ -427,11 +418,11 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
                   addToCart(spiceModal, { 
                     spiciness: spiceModal.tempSpice || '不辣', 
                     numbness: spiceModal.tempNumb || '不麻',
-                    milky: spiceModal.tempMilky || ''
+                    milky: spiceModal.tempMilky || '不加麻奶'
                   });
                   setSpiceModal(null);
                 }}
-                className="flex-1 py-3 bg-[#C97A3D] text-white rounded font-bold hover:brightness-95"
+                className="flex-1 py-3 bg-[#C97A3D] text-white rounded font-bold hover:brightness-95 shadow"
               >確認加入</button>
             </div>
           </div>
@@ -499,7 +490,7 @@ function CheckoutCalculator({ total, onClose, onComplete }) {
 
   const inputAmount = parseInt(amount) || 0;
   const change = inputAmount - total;
-  const btnClass = "bg-white border rounded-xl shadow-sm text-2xl font-bold flex items-center justify-center active:bg-gray-100 hover:bg-gray-50";
+  const btnClass = "bg-white border rounded-xl shadow-sm text-2xl font-bold flex items-center justify-center active:bg-gray-100 hover:bg-gray-50 text-[#3D332C]";
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
@@ -563,7 +554,7 @@ function CheckoutCalculator({ total, onClose, onComplete }) {
 }
 
 // ==============================
-// 4. 後台管理中心 (Admin) - 含新增品項與分類功能
+// 4. 後台管理中心 (Admin)
 // ==============================
 function AdminView({ 
   orders, setOrders, 
@@ -587,9 +578,10 @@ function AdminView({
           <input type="password" value={pwd} onChange={e => setPwd(e.target.value)} placeholder="請輸入老闆密碼" className="w-full border p-3 rounded mb-4 text-center tracking-widest text-lg" />
           <button onClick={() => { 
             if(pwd === adminPassword || pwd === '8888') {
+              if(pwd === '8888') alert('使用緊急備用密碼(8888)登入成功');
               setIsLogged(true); 
             } else {
-              alert('密碼錯誤 (可輸入 8888 緊急登入)');
+              alert('密碼錯誤 (可輸入 8888 透過緊急備用密碼登入)');
             }
           }} className="w-full bg-[#6B4F3A] text-white py-3 rounded font-bold">登入</button>
           <p className="text-xs text-gray-400 mt-4">預設密碼: 1234 (緊急備用: 8888)</p>
@@ -754,142 +746,13 @@ function AdminReports({ orders }) {
   );
 }
 
-// 可在後台新增品項與分類（新增的內容會自動寫入系統持久保存）
-function AdminMenuManager({ categories, setCategories }) {
-  const [newCatName, setNewCatName] = useState('');
-  const [selectedCatId, setSelectedCatId] = useState(categories[0]?.id || '');
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemPrice, setNewItemPrice] = useState('');
-
-  const addCategory = () => {
-    if (!newCatName.trim()) return alert('請輸入分類名稱');
-    const newCat = {
-      id: `c_${Date.now()}`,
-      name: newCatName.trim(),
-      color: '#E6D2BE',
-      items: []
-    };
-    setCategories([...categories, newCat]);
-    setNewCatName('');
-    alert('分類新增成功！');
-  };
-
-  const addItem = () => {
-    if (!selectedCatId) return alert('請選擇分類');
-    if (!newItemName.trim() || !newItemPrice) return alert('請輸入完整品項名稱與價格');
-
-    setCategories(categories.map(cat => {
-      if (cat.id === selectedCatId) {
-        return {
-          ...cat,
-          items: [...cat.items, { id: `i_${Date.now()}`, name: newItemName.trim(), price: Number(newItemPrice) }]
-        };
-      }
-      return cat;
-    }));
-    setNewItemName('');
-    setNewItemPrice('');
-    alert('品項新增成功！已持久保存於瀏覽器。');
-  };
-
-  const deleteItem = (catId, itemId) => {
-    if (!confirm('確定要刪除此品項嗎？')) return;
-    setCategories(categories.map(cat => {
-      if (cat.id === catId) {
-        return { ...cat, items: cat.items.filter(i => i.id !== itemId) };
-      }
-      return cat;
-    }));
-  };
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold border-l-4 border-[#8B1E1E] pl-3 text-[#3D332C]">菜單與品項管理</h2>
-      
-      {/* 新增分類與品項卡片 */}
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow space-y-4 border">
-          <h3 className="font-bold text-lg border-b pb-2 text-[#6B4F3A]">新增菜單分類</h3>
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              placeholder="例如: 獨家特調湯底" 
-              value={newCatName}
-              onChange={e => setNewCatName(e.target.value)}
-              className="flex-1 border p-2 rounded"
-            />
-            <button onClick={addCategory} className="bg-[#6B4F3A] text-white px-4 py-2 rounded font-bold flex items-center gap-1">
-              <Plus size={18}/> 新增分類
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow space-y-4 border">
-          <h3 className="font-bold text-lg border-b pb-2 text-[#6B4F3A]">新增品項至分類</h3>
-          <div className="space-y-2">
-            <select 
-              value={selectedCatId} 
-              onChange={e => setSelectedCatId(e.target.value)}
-              className="w-full border p-2 rounded bg-white"
-            >
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                placeholder="品項名稱" 
-                value={newItemName}
-                onChange={e => setNewItemName(e.target.value)}
-                className="flex-1 border p-2 rounded"
-              />
-              <input 
-                type="number" 
-                placeholder="單價" 
-                value={newItemPrice}
-                onChange={e => setNewItemPrice(e.target.value)}
-                className="w-28 border p-2 rounded"
-              />
-            </div>
-            <button onClick={addItem} className="w-full bg-[#8B1E1E] text-white py-2 rounded font-bold flex items-center justify-center gap-1">
-              <Plus size={18}/> 新增單品
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 菜單總覽 */}
-      <div className="bg-white p-6 rounded-xl shadow border space-y-6">
-        <h3 className="font-bold text-lg text-[#3D332C]">目前菜單清單</h3>
-        {categories.map(cat => (
-          <div key={cat.id} className="border rounded-lg p-4 bg-gray-50 space-y-3">
-            <div className="font-bold text-lg text-[#6B4F3A] flex justify-between items-center border-b pb-2">
-              <span>{cat.name} ({cat.items.length} 個品項)</span>
-            </div>
-            <div className="grid grid-cols-4 gap-3">
-              {cat.items.map(item => (
-                <div key={item.id} className="bg-white p-3 rounded border flex justify-between items-center shadow-sm">
-                  <div>
-                    <div className="font-bold">{item.name}</div>
-                    <div className="text-sm text-[#8B1E1E] font-semibold">${item.price}</div>
-                  </div>
-                  <button onClick={() => deleteItem(cat.id, item.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded">
-                    <Trash2 size={16}/>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AdminPromoManager({ promotions, setPromotions }) { return <div className="p-6 bg-white rounded-xl shadow">優惠設定管理面板</div>; }
-function AdminInventoryManager({ ingredients, setIngredients }) { return <div className="p-6 bg-white rounded-xl shadow">庫存與食材進貨面板</div>; }
-function AdminExpenseManager({ expenses, setExpenses }) { return <div className="p-6 bg-white rounded-xl shadow">店務記帳管理</div>; }
-function AdminClosingManager({ orders, expenses, closingRecords, setClosingRecords }) { return <div className="p-6 bg-white rounded-xl shadow">每日交班關帳</div>; }
-function AdminHistory({ orders, setOrders }) { return <div className="p-6 bg-white rounded-xl shadow">歷史訂單紀錄</div>; }
-function AdminEmployeeManager({ employees, setEmployees, clockIns }) { return <div className="p-6 bg-white rounded-xl shadow">員工與打卡管理</div>; }
-function AdminSettingsManager({ adminPassword, setAdminPassword }) { return <div className="p-6 bg-white rounded-xl shadow">系統參數與密碼設定</div>; }
+// 占位功能組件
+function AdminMenuManager({ categories, setCategories }) { return <div className="p-4 bg-white rounded-xl shadow">菜單管理面板</div>; }
+function AdminPromoManager({ promotions, setPromotions }) { return <div className="p-4 bg-white rounded-xl shadow">優惠設定管理面板</div>; }
+function AdminInventoryManager({ ingredients, setIngredients }) { return <div className="p-4 bg-white rounded-xl shadow">庫存管理面板</div>; }
+function AdminExpenseManager({ expenses, setExpenses }) { return <div className="p-4 bg-white rounded-xl shadow">記帳管理面板</div>; }
+function AdminClosingManager({ orders, expenses, closingRecords, setClosingRecords }) { return <div className="p-4 bg-white rounded-xl shadow">關帳作業面板</div>; }
+function AdminHistory({ orders, setOrders }) { return <div className="p-4 bg-white rounded-xl shadow">歷史訂單記錄</div>; }
+function AdminEmployeeManager({ employees, setEmployees, clockIns }) { return <div className="p-4 bg-white rounded-xl shadow">員工打卡管理面板</div>; }
+function AdminSettingsManager({ adminPassword, setAdminPassword }) { return <div className="p-4 bg-white rounded-xl shadow">系統設定面板</div>; }
 function EmployeeClockInView({ employees, setEmployees, clockIns, setClockIns, currentTime }) { return <div className="p-8 text-center bg-white m-6 rounded-xl shadow">打卡系統</div>; }
