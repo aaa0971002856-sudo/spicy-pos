@@ -551,697 +551,106 @@ function CheckoutCalculator({ total, onClose, onComplete }) {
   );
 }
 
-// ==============================
 // // ==============================
-// 4.1 後台管理 - 菜單管理 (AdminMenuManager)
+// 4. 後台管理中心 (Admin) - 已修復白屏問題
 // ==============================
-function AdminMenuManager({ categories, setCategories }) {
-  const [selectedCatId, setSelectedCatId] = useState(categories[0]?.id || '');
-  const [newCatName, setNewCatName] = useState('');
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemPrice, setNewItemPrice] = useState('');
+function AdminView({ 
+  orders = [], setOrders, 
+  categories = [], setCategories, 
+  promotions = [], setPromotions, 
+  employees = [], setEmployees, clockIns = [], 
+  ingredients = [], setIngredients,
+  expenses = [], setExpenses,
+  closingRecords = [], setClosingRecords,
+  adminPassword, setAdminPassword 
+}) {
+  const [isLogged, setIsLogged] = useState(false);
+  const [pwd, setPwd] = useState('');
+  const [activeTab, setActiveTab] = useState('DASHBOARD'); 
 
-  const activeCategory = categories.find(c => c.id === selectedCatId) || categories[0];
-
-  const handleAddCategory = () => {
-    if (!newCatName.trim()) return alert('請輸入分類名稱');
-    const newCat = {
-      id: `c_${Date.now()}`,
-      name: newCatName,
-      color: '#E6D2BE',
-      items: []
-    };
-    setCategories([...categories, newCat]);
-    setNewCatName('');
-    setSelectedCatId(newCat.id);
-  };
-
-  const handleRemoveCategory = (catId) => {
-    if (categories.length <= 1) return alert('至少需保留一個分類');
-    if (confirm('確定要刪除整個分類嗎？')) {
-      const nextCats = categories.filter(c => c.id !== catId);
-      setCategories(nextCats);
-      setSelectedCatId(nextCats[0].id);
-    }
-  };
-
-  const handleAddItem = () => {
-    if (!newItemName.trim() || !newItemPrice) return alert('請填寫完整品項名稱與價格');
-    const newItem = {
-      id: `item_${Date.now()}`,
-      name: newItemName,
-      price: Number(newItemPrice)
-    };
-    setCategories(categories.map(c => 
-      c.id === selectedCatId ? { ...c, items: [...c.items, newItem] } : c
-    ));
-    setNewItemName('');
-    setNewItemPrice('');
-  };
-
-  const handleRemoveItem = (itemId) => {
-    setCategories(categories.map(c => 
-      c.id === selectedCatId ? { ...c, items: c.items.filter(i => i.id !== itemId) } : c
-    ));
-  };
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">菜單品項管理</h2>
-      
-      {/* 新增分類 */}
-      <div className="bg-white p-4 rounded-xl shadow flex gap-3 items-center">
-        <input 
-          type="text" 
-          placeholder="輸入新分類名稱 (例: 飲料類)..." 
-          value={newCatName} 
-          onChange={e => setNewCatName(e.target.value)} 
-          className="border p-2 rounded flex-1 text-sm"
-        />
-        <button onClick={handleAddCategory} className="bg-[#6B4F3A] text-white px-4 py-2 rounded font-bold text-sm shadow">
-          + 新增分類
-        </button>
-      </div>
-
-      {/* 分類選擇 Tab */}
-      <div className="flex gap-2 border-b pb-2 overflow-x-auto">
-        {categories.map(cat => (
-          <div key={cat.id} className="flex items-center gap-1">
-            <button 
-              onClick={() => setSelectedCatId(cat.id)}
-              className={`px-4 py-2 rounded-t font-bold text-sm border-b-2 ${selectedCatId === cat.id ? 'border-[#8B1E1E] text-[#8B1E1E] bg-white' : 'text-gray-500 hover:text-gray-800'}`}
-            >
-              {cat.name} ({cat.items?.length || 0})
-            </button>
-            {categories.length > 1 && (
-              <button onClick={() => handleRemoveCategory(cat.id)} className="text-red-400 hover:text-red-600 p-1">
-                <Trash2 size={14} />
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* 品項管理與新增 */}
-      {activeCategory && (
-        <div className="bg-white p-6 rounded-xl shadow space-y-4">
-          <div className="flex gap-3 items-center bg-gray-50 p-3 rounded-lg border">
-            <span className="font-bold text-gray-700 text-sm">新增商品至 [{activeCategory.name}]：</span>
-            <input 
-              type="text" 
-              placeholder="品項名稱" 
-              value={newItemName} 
-              onChange={e => setNewItemName(e.target.value)}
-              className="border p-2 rounded flex-1 text-sm bg-white"
-            />
-            <input 
-              type="number" 
-              placeholder="價格 ($)" 
-              value={newItemPrice} 
-              onChange={e => setNewItemPrice(e.target.value)}
-              className="border p-2 rounded w-28 text-sm bg-white"
-            />
-            <button onClick={handleAddItem} className="bg-[#C97A3D] text-white px-4 py-2 rounded font-bold text-sm shadow">
-              新增單品
-            </button>
-          </div>
-
-          {/* 品項列表 */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {activeCategory.items.map(item => (
-              <div key={item.id} className="flex justify-between items-center p-3 border rounded-lg bg-gray-50 hover:bg-white shadow-sm">
-                <div>
-                  <p className="font-bold text-[#3D332C]">{item.name}</p>
-                  <p className="text-xs font-semibold text-[#8B1E1E]">${item.price}</p>
-                </div>
-                <button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
+  if (!isLogged) {
+    return (
+      <div className="h-full flex items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-lg w-80 text-center border-t-4 border-[#6B4F3A]">
+          <h2 className="text-2xl font-bold mb-6 text-[#3D332C]">後台管理登入</h2>
+          <input 
+            type="password" 
+            value={pwd} 
+            onChange={e => setPwd(e.target.value)} 
+            placeholder="請輸入老闆密碼" 
+            className="w-full border p-3 rounded mb-4 text-center tracking-widest text-lg" 
+          />
+          <button 
+            onClick={() => { 
+              if(pwd === adminPassword || pwd === '8888') {
+                if(pwd === '8888') alert('使用緊急備用密碼(8888)登入成功');
+                setIsLogged(true); 
+              } else {
+                alert('密碼錯誤 (可輸入 8888 透過緊急備用密碼登入)');
+              }
+            }} 
+            className="w-full bg-[#6B4F3A] text-white py-3 rounded font-bold shadow hover:bg-[#583f2e]"
+          >
+            登入
+          </button>
+          <p className="text-xs text-gray-400 mt-4">預設密碼: 1234 (緊急備用: 8888)</p>
         </div>
-      )}
-    </div>
-  );
-}
+      </div>
+    );
+  }
 
-// ==============================
-// 4.2 後台管理 - 優惠設定 (AdminPromoManager)
-// ==============================
-function AdminPromoManager({ promotions, setPromotions }) {
-  const [name, setName] = useState('');
-  const [type, setType] = useState('amount');
-  const [value, setValue] = useState('');
-
-  const handleAdd = () => {
-    if (!name || !value) return alert('請填寫完整資訊');
-    const newPromo = {
-      id: `p_${Date.now()}`,
-      name,
-      type,
-      value: Number(value)
-    };
-    setPromotions([...promotions, newPromo]);
-    setName('');
-    setValue('');
-  };
-
-  const handleRemove = (id) => {
-    setPromotions(promotions.filter(p => p.id !== id));
-  };
+  const TABS = [
+    { id: 'DASHBOARD', icon: <TrendingUp size={20}/>, label: '營運儀表板' },
+    { id: 'REPORTS', icon: <PieChart size={20}/>, label: '多維度報表' },
+    { id: 'MENU', icon: <FileText size={20}/>, label: '菜單管理' },
+    { id: 'PROMO', icon: <Percent size={20}/>, label: '優惠設定' },
+    { id: 'INVENTORY', icon: <Package size={20}/>, label: '進貨與庫存' },
+    { id: 'EXPENSES', icon: <DollarSign size={20}/>, label: '記帳管理' },
+    { id: 'CLOSING', icon: <Store size={20}/>, label: '每日關帳作業' },
+    { id: 'HISTORY', icon: <Clock size={20}/>, label: '歷史訂單' },
+    { id: 'EMPLOYEES', icon: <Calendar size={20}/>, label: '員工與打卡管理' },
+    { id: 'SETTINGS', icon: <Settings size={20}/>, label: '系統設定' },
+  ];
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">優惠折扣設定</h2>
-      
-      <div className="bg-white p-6 rounded-xl shadow space-y-4">
-        <h3 className="font-bold text-[#3D332C]">新增折扣活動</h3>
-        <div className="flex gap-3">
-          <input 
-            type="text" 
-            placeholder="活動名稱 (例: 歡慶開幕全店九折)" 
-            value={name} 
-            onChange={e => setName(e.target.value)}
-            className="border p-2 rounded flex-1 text-sm"
-          />
-          <select value={type} onChange={e => setType(e.target.value)} className="border p-2 rounded text-sm bg-white">
-            <option value="amount">固定金額折抵 (-$)</option>
-            <option value="percent">百分比打折 (-%)</option>
-          </select>
-          <input 
-            type="number" 
-            placeholder={type === 'amount' ? '折抵金額' : '打折幅度 (例如 10 = 9折)'} 
-            value={value} 
-            onChange={e => setValue(e.target.value)}
-            className="border p-2 rounded w-44 text-sm"
-          />
-          <button onClick={handleAdd} className="bg-[#6B4F3A] text-white px-5 py-2 rounded font-bold text-sm shadow">
-            新增活動
+    <div className="flex h-full">
+      {/* 左側選單 */}
+      <div className="w-64 bg-white border-r flex flex-col shadow-sm">
+        <div className="p-4 bg-[#F6F0E8] border-b font-bold text-[#6B4F3A] flex items-center justify-between">
+          <span>老闆後台中心</span>
+          <button onClick={() => setIsLogged(false)} title="登出後台" className="text-gray-500 hover:text-red-600">
+            <LogOut size={18}/>
           </button>
         </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-xl shadow">
-        <h3 className="font-bold text-[#3D332C] mb-4">目前生效中的優惠活動</h3>
-        <div className="space-y-2">
-          {promotions.map(p => (
-            <div key={p.id} className="flex justify-between items-center p-3 border rounded-lg bg-gray-50">
-              <div>
-                <span className="font-bold text-[#3D332C] mr-2">{p.name}</span>
-                <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded border border-orange-200">
-                  {p.type === 'amount' ? `直減 $${p.value}` : `打 ${10 - p.value/10} 折 (-${p.value}%)`}
-                </span>
-              </div>
-              <button onClick={() => handleRemove(p.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded">
-                <Trash2 size={16} />
-              </button>
-            </div>
+        <div className="flex-1 overflow-y-auto py-2">
+          {TABS.map(tab => (
+            <button 
+              key={tab.id} 
+              onClick={() => setActiveTab(tab.id)}
+              className={`w-full flex items-center gap-3 px-6 py-3 text-left transition-colors ${
+                activeTab === tab.id 
+                  ? 'bg-[#E6D2BE] text-[#3D332C] font-bold border-r-4 border-[#8B1E1E]' 
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {tab.icon} {tab.label}
+            </button>
           ))}
         </div>
       </div>
-    </div>
-  );
-}
 
-// ==============================
-// 4.3 後台管理 - 庫存與進貨管理 (AdminInventoryManager)
-// ==============================
-function AdminInventoryManager({ ingredients, setIngredients }) {
-  const [name, setName] = useState('');
-  const [supplier, setSupplier] = useState('');
-  const [unit, setUnit] = useState('kg');
-  const [price, setPrice] = useState('');
-  const [stock, setStock] = useState('');
-  const [safeStock, setSafeStock] = useState('');
-
-  const handleAdd = () => {
-    if (!name || !price || !stock) return alert('請填寫主要欄位');
-    const newIng = {
-      id: `ing_${Date.now()}`,
-      name,
-      supplier: supplier || '一般廠商',
-      unit,
-      price: Number(price),
-      category: '原料',
-      stock: Number(stock),
-      safeStock: Number(safeStock) || 5
-    };
-    setIngredients([...ingredients, newIng]);
-    setName(''); setSupplier(''); setPrice(''); setStock(''); setSafeStock('');
-  };
-
-  const updateStock = (id, delta) => {
-    setIngredients(ingredients.map(ing => 
-      ing.id === id ? { ...ing, stock: Math.max(0, ing.stock + delta) } : ing
-    ));
-  };
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">食材與進貨庫存管理</h2>
-
-      {/* 新增食材 */}
-      <div className="bg-white p-6 rounded-xl shadow space-y-4">
-        <h3 className="font-bold text-[#3D332C]">新增食材品項</h3>
-        <div className="grid grid-cols-6 gap-2">
-          <input type="text" placeholder="食材名稱" value={name} onChange={e => setName(e.target.value)} className="border p-2 rounded text-sm" />
-          <input type="text" placeholder="供應商" value={supplier} onChange={e => setSupplier(e.target.value)} className="border p-2 rounded text-sm" />
-          <input type="text" placeholder="單位 (如 kg, 箱)" value={unit} onChange={e => setUnit(e.target.value)} className="border p-2 rounded text-sm" />
-          <input type="number" placeholder="進貨單價" value={price} onChange={e => setPrice(e.target.value)} className="border p-2 rounded text-sm" />
-          <input type="number" placeholder="初始庫存" value={stock} onChange={e => setStock(e.target.value)} className="border p-2 rounded text-sm" />
-          <input type="number" placeholder="安全庫存量" value={safeStock} onChange={e => setSafeStock(e.target.value)} className="border p-2 rounded text-sm" />
-        </div>
-        <button onClick={handleAdd} className="bg-[#6B4F3A] text-white px-5 py-2 rounded font-bold text-sm shadow">新增食材</button>
-      </div>
-
-      {/* 庫存列表 */}
-      <div className="bg-white p-6 rounded-xl shadow">
-        <h3 className="font-bold text-[#3D332C] mb-4">食材庫存監控與盤點</h3>
-        <table className="w-full text-left border-collapse text-sm">
-          <thead>
-            <tr className="border-b bg-gray-100 text-gray-600">
-              <th className="p-3">食材名稱</th>
-              <th className="p-3">供應商</th>
-              <th className="p-3">單價</th>
-              <th className="p-3">當前庫存</th>
-              <th className="p-3">安全警戒線</th>
-              <th className="p-3">快速調整庫存</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ingredients.map(ing => (
-              <tr key={ing.id} className="border-b hover:bg-gray-50">
-                <td className="p-3 font-bold">{ing.name}</td>
-                <td className="p-3 text-gray-500">{ing.supplier}</td>
-                <td className="p-3">${ing.price} / {ing.unit}</td>
-                <td className={`p-3 font-bold ${ing.stock <= ing.safeStock ? 'text-red-600' : 'text-gray-800'}`}>
-                  {ing.stock} {ing.unit}
-                </td>
-                <td className="p-3 text-gray-400">{ing.safeStock} {ing.unit}</td>
-                <td className="p-3">
-                  <div className="flex gap-1">
-                    <button onClick={() => updateStock(ing.id, -1)} className="px-2 py-1 bg-gray-200 rounded font-bold">-1</button>
-                    <button onClick={() => updateStock(ing.id, 1)} className="px-2 py-1 bg-green-100 text-green-700 rounded font-bold">+1</button>
-                    <button onClick={() => updateStock(ing.id, 10)} className="px-2 py-1 bg-green-600 text-white rounded font-bold">+10</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ==============================
-// 4.4 後台管理 - 記帳管理 (AdminExpenseManager)
-// ==============================
-function AdminExpenseManager({ expenses, setExpenses }) {
-  const [title, setTitle] = useState('');
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('進貨成本');
-
-  const handleAdd = () => {
-    if (!title || !amount) return alert('請填寫項目與金額');
-    const newExp = {
-      id: `exp_${Date.now()}`,
-      date: new Date().toLocaleDateString('zh-TW'),
-      time: new Date().toLocaleTimeString('zh-TW', { hour12: false }),
-      title,
-      category,
-      amount: Number(amount)
-    };
-    setExpenses([newExp, ...expenses]);
-    setTitle(''); setAmount('');
-  };
-
-  const totalExpense = expenses.reduce((s, e) => s + e.amount, 0);
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">每日支出記帳</h2>
-
-      <div className="bg-white p-6 rounded-xl shadow space-y-4">
-        <h3 className="font-bold text-[#3D332C]">新增支出項目</h3>
-        <div className="flex gap-3">
-          <input type="text" placeholder="支出說明 (例: 買免洗碗筷)" value={title} onChange={e => setTitle(e.target.value)} className="border p-2 rounded flex-1 text-sm" />
-          <select value={category} onChange={e => setCategory(e.target.value)} className="border p-2 rounded text-sm bg-white">
-            <option value="進貨成本">進貨成本</option>
-            <option value="水電瓦斯">水電瓦斯</option>
-            <option value="雜項支出">雜項支出</option>
-            <option value="人事薪資">人事薪資</option>
-          </select>
-          <input type="number" placeholder="金額 ($)" value={amount} onChange={e => setAmount(e.target.value)} className="border p-2 rounded w-36 text-sm" />
-          <button onClick={handleAdd} className="bg-[#8B1E1E] text-white px-5 py-2 rounded font-bold text-sm shadow">登記支出</button>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-xl shadow">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-[#3D332C]">支出紀錄列表</h3>
-          <span className="text-lg font-bold text-red-600">總計支出: ${totalExpense.toLocaleString()}</span>
-        </div>
-        <table className="w-full text-left border-collapse text-sm">
-          <thead>
-            <tr className="border-b bg-gray-100 text-gray-600">
-              <th className="p-3">日期時間</th>
-              <th className="p-3">項目</th>
-              <th className="p-3">類別</th>
-              <th className="p-3">金額</th>
-            </tr>
-          </thead>
-          <tbody>
-            {expenses.length === 0 ? (
-              <tr><td colSpan="4" className="p-4 text-center text-gray-400">尚無支出紀錄</td></tr>
-            ) : (
-              expenses.map(e => (
-                <tr key={e.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3 text-gray-500">{e.date} {e.time}</td>
-                  <td className="p-3 font-bold">{e.title}</td>
-                  <td className="p-3"><span className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded">{e.category}</span></td>
-                  <td className="p-3 font-bold text-red-600">-${e.amount}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ==============================
-// 4.5 後台管理 - 每日關帳作業 (AdminClosingManager)
-// ==============================
-function AdminClosingManager({ orders, expenses, closingRecords, setClosingRecords }) {
-  const [cashDrawer, setCashDrawer] = useState('');
-  
-  const totalRev = orders.reduce((s, o) => s + o.total, 0);
-  const totalCashRev = orders.filter(o => o.paymentMethod === '現金').reduce((s, o) => s + o.total, 0);
-  const totalLinePayRev = orders.filter(o => o.paymentMethod === 'Line Pay').reduce((s, o) => s + o.total, 0);
-  const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
-  const netProfit = totalRev - totalExp;
-
-  const handleCloseDay = () => {
-    if (!cashDrawer) return alert('請輸入抽屜實際點算現金金額');
-    const record = {
-      id: `close_${Date.now()}`,
-      date: new Date().toLocaleDateString('zh-TW'),
-      totalRev,
-      totalCashRev,
-      totalLinePayRev,
-      totalExp,
-      netProfit,
-      actualCash: Number(cashDrawer),
-      diff: Number(cashDrawer) - totalCashRev
-    };
-    setClosingRecords([record, ...closingRecords]);
-    alert('今日關帳完成！紀錄已封存。');
-  };
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">每日結算與關帳作業</h2>
-
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow border-l-4 border-green-500">
-          <p className="text-gray-500 text-sm">今日營業總額</p>
-          <p className="text-2xl font-bold text-gray-800">${totalRev.toLocaleString()}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow border-l-4 border-emerald-500">
-          <p className="text-gray-500 text-sm">現金收入 / LinePay</p>
-          <p className="text-lg font-bold text-gray-800">${totalCashRev} / ${totalLinePayRev}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow border-l-4 border-red-500">
-          <p className="text-gray-500 text-sm">今日總支出</p>
-          <p className="text-2xl font-bold text-red-600">-${totalExp.toLocaleString()}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow border-l-4 border-blue-500">
-          <p className="text-gray-500 text-sm">今日預估純利</p>
-          <p className="text-2xl font-bold text-blue-600">${netProfit.toLocaleString()}</p>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-xl shadow space-y-4">
-        <h3 className="font-bold text-[#3D332C]">執行夜間關帳點算</h3>
-        <div className="flex gap-4 items-center bg-orange-50 p-4 rounded-xl border border-orange-200">
-          <span className="font-bold text-gray-700">抽屜實際現金總額：</span>
-          <input 
-            type="number" 
-            placeholder="請點算金額並輸入..." 
-            value={cashDrawer} 
-            onChange={e => setCashDrawer(e.target.value)}
-            className="border p-2 rounded text-lg font-bold w-48 text-right bg-white"
-          />
-          <button onClick={handleCloseDay} className="bg-[#8B1E1E] text-white px-6 py-2 rounded-lg font-bold shadow hover:brightness-95">
-            進行關帳封存
-          </button>
-        </div>
-      </div>
-
-      {/* 關帳歷史紀錄 */}
-      <div className="bg-white p-6 rounded-xl shadow">
-        <h3 className="font-bold text-[#3D332C] mb-4">關帳歷史紀錄</h3>
-        <table className="w-full text-left border-collapse text-sm">
-          <thead>
-            <tr className="border-b bg-gray-100 text-gray-600">
-              <th className="p-3">日期</th>
-              <th className="p-3">總營業額</th>
-              <th className="p-3">現金收入</th>
-              <th className="p-3">實際點算</th>
-              <th className="p-3">盤差金額</th>
-              <th className="p-3">淨利</th>
-            </tr>
-          </thead>
-          <tbody>
-            {closingRecords.map(r => (
-              <tr key={r.id} className="border-b hover:bg-gray-50">
-                <td className="p-3 font-bold">{r.date}</td>
-                <td className="p-3">${r.totalRev}</td>
-                <td className="p-3">${r.totalCashRev}</td>
-                <td className="p-3">${r.actualCash}</td>
-                <td className={`p-3 font-bold ${r.diff < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                  {r.diff >= 0 ? `+${r.diff}` : r.diff}
-                </td>
-                <td className="p-3 font-bold text-blue-600">${r.netProfit}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ==============================
-// 4.6 後台管理 - 歷史訂單紀錄 (AdminHistory)
-// ==============================
-function AdminHistory({ orders, setOrders }) {
-  const handleDelete = (id) => {
-    if (confirm(`確定要刪除訂單 #${id} 嗎？`)) {
-      setOrders(orders.filter(o => o.id !== id));
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">歷史訂單查詢與退單處理</h2>
-      
-      <div className="bg-white p-6 rounded-xl shadow">
-        <table className="w-full text-left border-collapse text-sm">
-          <thead>
-            <tr className="border-b bg-gray-100 text-gray-600">
-              <th className="p-3">單號</th>
-              <th className="p-3">時間</th>
-              <th className="p-3">品項明細</th>
-              <th className="p-3">點餐管道</th>
-              <th className="p-3">金額</th>
-              <th className="p-3">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.length === 0 ? (
-              <tr><td colSpan="6" className="p-4 text-center text-gray-400">尚無歷史訂單</td></tr>
-            ) : (
-              orders.map(o => (
-                <tr key={o.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3 font-bold">{o.id}</td>
-                  <td className="p-3 text-xs text-gray-500">{o.date} {o.time}</td>
-                  <td className="p-3">
-                    <div className="text-xs space-y-0.5">
-                      {o.items.map((i, idx) => (
-                        <div key={idx}>
-                          {i.name} x{i.qty} {i.spiciness && `(${i.spiciness}/${i.numbness})`} {i.milky}
-                        </div>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="p-3">{o.source} {o.subSource && `(${o.subSource})`}</td>
-                  <td className="p-3 font-bold text-[#8B1E1E]">${o.total}</td>
-                  <td className="p-3">
-                    <button onClick={() => handleDelete(o.id)} className="bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200 font-bold text-xs">
-                      作廢退單
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ==============================
-// 4.7 後台管理 - 員工管理 (AdminEmployeeManager)
-// ==============================
-function AdminEmployeeManager({ employees, setEmployees, clockIns }) {
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleAddEmp = () => {
-    if (!name || !username || !password) return alert('請填寫完整員工資訊');
-    const newEmp = { id: `e_${Date.now()}`, name, username, password };
-    setEmployees([...employees, newEmp]);
-    setName(''); setUsername(''); setPassword('');
-  };
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">員工帳號與打卡紀錄</h2>
-
-      <div className="bg-white p-6 rounded-xl shadow space-y-4">
-        <h3 className="font-bold text-[#3D332C]">新增員工帳號</h3>
-        <div className="flex gap-3">
-          <input type="text" placeholder="員工姓名" value={name} onChange={e => setName(e.target.value)} className="border p-2 rounded text-sm flex-1" />
-          <input type="text" placeholder="打卡帳號" value={username} onChange={e => setUsername(e.target.value)} className="border p-2 rounded text-sm flex-1" />
-          <input type="password" placeholder="密碼" value={password} onChange={e => setPassword(e.target.value)} className="border p-2 rounded text-sm flex-1" />
-          <button onClick={handleAddEmp} className="bg-[#6B4F3A] text-white px-5 py-2 rounded font-bold text-sm shadow">新增員工</button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="font-bold text-[#3D332C] mb-4">員工清單</h3>
-          <div className="space-y-2">
-            {employees.map(emp => (
-              <div key={emp.id} className="flex justify-between p-3 border rounded bg-gray-50">
-                <span className="font-bold">{emp.name}</span>
-                <span className="text-gray-500 text-sm">帳號: {emp.username}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="font-bold text-[#3D332C] mb-4">打卡打卡紀錄日誌</h3>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {clockIns.length === 0 ? <p className="text-gray-400 text-sm">今日尚無打卡紀錄</p> : 
-              clockIns.map((c, idx) => (
-                <div key={idx} className="flex justify-between p-2 border-b text-sm">
-                  <span className="font-bold">{c.name}</span>
-                  <span className="text-gray-600">{c.type} - {c.time}</span>
-                </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==============================
-// 4.8 後台管理 - 系統設定 (AdminSettingsManager)
-// ==============================
-function AdminSettingsManager({ adminPassword, setAdminPassword }) {
-  const [newPwd, setNewPwd] = useState('');
-
-  const handleChangePwd = () => {
-    if (!newPwd) return alert('請輸入新密碼');
-    setAdminPassword(newPwd);
-    setNewPwd('');
-    alert('後台老闆密碼修改成功！');
-  };
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">系統安全與偏好設定</h2>
-
-      <div className="bg-white p-6 rounded-xl shadow space-y-4 max-w-lg">
-        <h3 className="font-bold text-[#3D332C]">修改老闆登入密碼</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-bold text-gray-500">當前密碼</label>
-            <input type="text" readOnly value={adminPassword} className="border p-2 rounded w-full bg-gray-100 text-sm mt-1" />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-gray-500">新設定密碼</label>
-            <input 
-              type="password" 
-              placeholder="請輸入新密碼" 
-              value={newPwd} 
-              onChange={e => setNewPwd(e.target.value)}
-              className="border p-2 rounded w-full text-sm mt-1" 
-            />
-          </div>
-          <button onClick={handleChangePwd} className="bg-[#6B4F3A] text-white px-5 py-2 rounded font-bold text-sm shadow">
-            更新密碼
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==============================
-// 5. 員工打卡獨立頁面 (EmployeeClockInView)
-// ==============================
-function EmployeeClockInView({ employees, clockIns, setClockIns, currentTime }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleClock = (type) => {
-    const emp = employees.find(e => e.username === username && e.password === password);
-    if (!emp) return alert('帳號或密碼錯誤');
-    
-    const record = {
-      name: emp.name,
-      type,
-      time: currentTime.toLocaleTimeString('zh-TW', { hour12: false }),
-      date: currentTime.toLocaleDateString('zh-TW')
-    };
-    setClockIns([record, ...clockIns]);
-    alert(`${emp.name} ${type} 成功！時間：${record.time}`);
-    setUsername('');
-    setPassword('');
-  };
-
-  return (
-    <div className="h-full flex items-center justify-center p-6">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-96 text-center border-t-8 border-[#6B4F3A]">
-        <Clock size={48} className="mx-auto text-[#6B4F3A] mb-2" />
-        <h2 className="text-2xl font-bold text-[#3D332C] mb-1">員工考勤打卡系統</h2>
-        <p className="text-xs text-gray-400 mb-6">{currentTime.toLocaleString('zh-TW')}</p>
-
-        <div className="space-y-4 text-left mb-6">
-          <div>
-            <label className="text-xs font-bold text-gray-600">員工帳號</label>
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="w-full border p-2.5 rounded mt-1 text-sm bg-gray-50" />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-gray-600">密碼</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full border p-2.5 rounded mt-1 text-sm bg-gray-50" />
-          </div>
-        </div>
-
-        <div className="flex gap-3">
-          <button onClick={() => handleClock('上班打卡')} className="flex-1 bg-green-600 text-white py-3 rounded-xl font-bold shadow hover:bg-green-700">上班打卡</button>
-          <button onClick={() => handleClock('下班打卡')} className="flex-1 bg-orange-600 text-white py-3 rounded-xl font-bold shadow hover:bg-orange-700">下班打卡</button>
-        </div>
+      {/* 右側內容區 */}
+      <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+        {activeTab === 'DASHBOARD' && <AdminDashboard orders={orders} />}
+        {activeTab === 'REPORTS' && <AdminReports orders={orders} />}
+        {activeTab === 'MENU' && <AdminMenuManager categories={categories} setCategories={setCategories} />}
+        {activeTab === 'PROMO' && <AdminPromoManager promotions={promotions} setPromotions={setPromotions} />}
+        {activeTab === 'INVENTORY' && <AdminInventoryManager ingredients={ingredients} setIngredients={setIngredients} />}
+        {activeTab === 'EXPENSES' && <AdminExpenseManager expenses={expenses} setExpenses={setExpenses} />}
+        {activeTab === 'CLOSING' && <AdminClosingManager orders={orders} expenses={expenses} closingRecords={closingRecords} setClosingRecords={setClosingRecords} />}
+        {activeTab === 'HISTORY' && <AdminHistory orders={orders} setOrders={setOrders} />}
+        {activeTab === 'EMPLOYEES' && <AdminEmployeeManager employees={employees} setEmployees={setEmployees} clockIns={clockIns} />}
+        {activeTab === 'SETTINGS' && <AdminSettingsManager adminPassword={adminPassword} setAdminPassword={setAdminPassword} />}
       </div>
     </div>
   );
