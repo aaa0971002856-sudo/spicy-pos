@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
+
 import { 
+
   Store, Settings, Clock, Calculator, Trash2, Edit, Plus, FileText, 
+
   TrendingUp, DollarSign, Percent, PieChart, Package, Calendar, 
+
   ChevronRight, LogOut, Eye, EyeOff, X, ArrowUp, ArrowDown, CheckCircle, AlertTriangle, Cloud 
+
 } from 'lucide-react';
 
 // ==============================
