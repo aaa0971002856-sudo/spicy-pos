@@ -30,11 +30,10 @@ import {
 // 1. 預設資料與共用常數
 // ==============================
 const DEFAULT_CATEGORIES = [
-  { id: 'c1', name: '套餐', color: '#E6D2BE', items: [{ id: 'item_c1_1', name: '招牌麻辣燙套餐', price: 100 }, { id: 'item_c1_2', name: 'A套餐', price: 115 }, { id: 'item_c1_3', name: 'B套餐', price: 130 }, { id: 'item_c1_4', name: 'c套餐', price: 135 }, { id: 'item_c1_5', name: 'D套餐', price: 140 }, { id: 'item_c1_6', name: '老饕套餐', price: 250 }] },
-  { id: 'c2', name: '吃不飽加點1', color: '#E6D2BE', items: [{ id: 'item_c2_1', name: '牛肉片', price: 50 }, { id: 'item_c2_2', name: '梅花豬肉', price: 45 }, { id: 'item_c2_3', name: '麻辣鴨血', price: 40 }, { id: 'item_c2_4', name: '麻辣豆腐', price: 40 }, { id: 'item_c2_5', name: '魚餃', price: 25 }, { id: 'item_c2_6', name: '燕餃', price: 25 }, { id: 'item_c2_7', name: '蟹肉棒', price: 25 }, { id: 'item_c2_8', name: '米血糕', price: 25 }, { id: 'item_c2_9', name: '豆皮', price: 25 }, { id: 'item_c2_10', name: '鑫鑫腸', price: 25 }, { id: 'item_c2_11', name: '老油條', price: 35 }, { id: 'item_c2_12', name: '黃金魚蛋', price: 25 }, { id: 'item_c2_13', name: '科學麵', price: 20 }, { id: 'item_c2_14', name: '王子麵', price: 20 }] },
-  { id: 'c3', name: '吃不飽加點2(蔬菜)', color: '#E6D2BE', items: [{ id: 'item_c3_1', name: '金針菇', price: 25 }, { id: 'item_c3_2', name: '木耳', price: 20 }, { id: 'item_c3_3', name: '玉米筍', price: 25 }, { id: 'item_c3_4', name: '空心菜', price: 25 }, { id: 'item_c3_5', name: '大陸妹', price: 25 }, { id: 'item_c3_6', name: '水蓮', price: 25 }, { id: 'item_c3_7', name: '茼蒿(季節限定)', price: 25 }] },
-  { id: 'c4', name: '吃麵麵', color: '#E6D2BE', items: [{ id: 'item_c4_1', name: '牛肉乾拌麵', price: 110 }, { id: 'item_c4_2', name: '豬肉乾拌麵', price: 105 }, { id: 'item_c4_3', name: '銷魂乾拌麵', price: 60 }, { id: 'item_c4_4', name: '烏龍拌麵', price: 60 }] },
-  { id: 'c5', name: '秘制滷味', color: '#E6D2BE', items: [{ id: 'item_c5_1', name: '牛肚/牛筋/牛腱', price: 100 }, { id: 'item_c5_2', name: '大腸', price: 60 }, { id: 'item_c5_3', name: '豬耳朵', price: 40 }, { id: 'item_c5_4', name: '無骨鳳爪', price: 40 }] }
+  { id: 'c1', name: '套餐', color: '#E6D2BE', items: [{ id: 'i1', name: '招牌麻辣燙套餐', price: 150 }, { id: 'i2', name: '牛五花套餐', price: 180 }] },
+  { id: 'c2', name: '吃不飽加點', color: '#E6D2BE', items: [{ id: 'i3', name: '高麗菜', price: 30 }, { id: 'i4', name: '金針菇', price: 30 }] },
+  { id: 'c3', name: '吃麵麵', color: '#E6D2BE', items: [{ id: 'i5', name: '王子麵', price: 20 }, { id: 'i6', name: '烏龍麵', price: 25 }] },
+  { id: 'c4', name: '秘制滷味', color: '#E6D2BE', items: [{ id: 'i7', name: '滷大腸', price: 60 }, { id: 'i8', name: '滷牛肚', price: 80 }] }
 ];
 
 const COLORS = {
@@ -373,41 +372,43 @@ function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, 
                 ))}
               </div>
             </div>
-           {/* 麻奶加價按鈕（移除「不加麻奶」選項） */}
-            <div className="mb-6">
-              <p className="font-semibold mb-2 text-sm text-gray-700">加價加濃</p>
-              <button 
-                onClick={() => setSpiceModal({
-                  ...spiceModal, 
-                  tempMilky: spiceModal.tempMilky === '+$15麻奶' ? '' : '+$15麻奶'
-                })}
-                className={`w-full py-3 rounded-lg border font-bold text-base transition-all ${
-                  spiceModal.tempMilky === '+$15麻奶' 
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-md ring-2 ring-amber-300' 
-                    : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
-                }`}
-              >
-                🥛 +$15麻奶
-              </button>
-            </div>
-
-            {/* 操作按鈕 */}
             <div className="flex gap-2">
-              <button onClick={() => setSpiceModal(null)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded font-bold">取消</button>
+              <button onClick={() => setSpiceModal(null)} className="flex-1 py-3 bg-gray-200 rounded font-bold">取消</button>
               <button 
                 onClick={() => {
-                  addToCart(spiceModal, { 
-                    spiciness: spiceModal.tempSpice || '不辣', 
-                    numbness: spiceModal.tempNumb || '不麻',
-                    milky: spiceModal.tempMilky || ''
-                  });
+                  addToCart(spiceModal, { spiciness: spiceModal.tempSpice || '不辣', numbness: spiceModal.tempNumb || '不麻' });
                   setSpiceModal(null);
                 }}
-                className="flex-1 py-3 bg-[#C97A3D] text-white rounded font-bold hover:brightness-95 shadow"
+                className="flex-1 py-3 bg-[#C97A3D] text-white rounded font-bold"
               >確認加入</button>
             </div>
           </div>
         </div>
+      )}
+
+      {checkoutModal && (
+        <CheckoutCalculator 
+          total={totals.total} 
+          onClose={() => setCheckoutModal(false)}
+          onComplete={(paymentMethod, inputAmount, change) => {
+            onCheckout({
+              id: `ORD${Date.now()}`,
+              date: new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+              time: new Date().toLocaleTimeString('zh-TW', { hour12: false }),
+              items: [...cart],
+              source,
+              subSource,
+              paymentMethod,
+              total: totals.total,
+              discount: totals.discount,
+              orderNote
+            });
+            setSuccessModal({ total: totals.total, paymentMethod, inputAmount, change });
+            setCart([]);
+            setCheckoutModal(false);
+            setSource('現場'); setSubSource(''); setSelectedPromo(''); setOrderNote('');
+          }}
+        />
       )}
 
       {successModal && (
@@ -469,7 +470,7 @@ function CheckoutCalculator({ total, onClose, onComplete }) {
         </div>
 
         <div className="flex gap-2">
-          {[100, 200, 300, 500, 1000, 1500, 2000].map(val => (
+          {[500, 1000, 1500, 2000].map(val => (
             <button key={val} onClick={() => setAmount(String(val))} className="flex-1 py-2 bg-[#E6D2BE] rounded text-[#3D332C] font-bold shadow-sm hover:brightness-95 border border-[#6B4F3A]/30">${val}</button>
           ))}
         </div>
