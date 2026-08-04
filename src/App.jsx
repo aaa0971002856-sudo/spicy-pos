@@ -6,27 +6,60 @@ function App() {
   const [cart, setCart] = useState(() => { const saved = localStorage.getItem('spicy_cart'); return saved ? JSON.parse(saved) : []; });
   const [orders, setOrders] = useState(() => { const saved = localStorage.getItem('spicy_orders'); return saved ? JSON.parse(saved) : []; });
   
-  // 1. 在預設菜單中加入 category 欄位
- const DEFAULT_CATEGORIES = [
-  { id: 'c1', name: '套餐', color: '#E6D2BE', items: [{ id: 'item_c1_1', name: '招牌麻辣燙套餐', price: 100 }, { id: 'item_c1_2', name: 'A套餐', price: 115 }, { id: 'item_c1_3', name: 'B套餐', price: 130 }, { id: 'item_c1_4', name: 'c套餐', price: 135 }, { id: 'item_c1_5', name: 'D套餐', price: 140 }, { id: 'item_c1_6', name: '老饕套餐', price: 250 }] },
-  { id: 'c2', name: '吃不飽加點1', color: '#E6D2BE', items: [{ id: 'item_c2_1', name: '牛肉片', price: 50 }, { id: 'item_c2_2', name: '梅花豬肉', price: 45 }, { id: 'item_c2_3', name: '麻辣鴨血', price: 40 }, { id: 'item_c2_4', name: '麻辣豆腐', price: 40 }, { id: 'item_c2_5', name: '魚餃', price: 25 }, { id: 'item_c2_6', name: '燕餃', price: 25 }, { id: 'item_c2_7', name: '蟹肉棒', price: 25 }, { id: 'item_c2_8', name: '米血糕', price: 25 }, { id: 'item_c2_9', name: '豆皮', price: 25 }, { id: 'item_c2_10', name: '鑫鑫腸', price: 25 }, { id: 'item_c2_11', name: '老油條', price: 35 }, { id: 'item_c2_12', name: '黃金魚蛋', price: 25 }, { id: 'item_c2_13', name: '科學麵', price: 20 }, { id: 'item_c2_14', name: '王子麵', price: 20 }] },
-  { id: 'c3', name: '吃不飽加點2(蔬菜)', color: '#E6D2BE', items: [{ id: 'item_c3_1', name: '金針菇', price: 25 }, { id: 'item_c3_2', name: '木耳', price: 20 }, { id: 'item_c3_3', name: '玉米筍', price: 25 }, { id: 'item_c3_4', name: '空心菜', price: 25 }, { id: 'item_c3_5', name: '大陸妹', price: 25 }, { id: 'item_c3_6', name: '水蓮', price: 25 }, { id: 'item_c3_7', name: '茼蒿(季節限定)', price: 25 }] },
-  { id: 'c4', name: '吃麵麵', color: '#E6D2BE', items: [{ id: 'item_c4_1', name: '牛肉乾拌麵', price: 110 }, { id: 'item_c4_2', name: '豬肉乾拌麵', price: 105 }, { id: 'item_c4_3', name: '銷魂乾拌麵', price: 60 }, { id: 'item_c4_4', name: '烏龍拌麵', price: 60 }] },
-  { id: 'c5', name: '秘制滷味', color: '#E6D2BE', items: [{ id: 'item_c5_1', name: '牛肚/牛筋/牛腱', price: 100 }, { id: 'item_c5_2', name: '大腸', price: 60 }, { id: 'item_c5_3', name: '豬耳朵', price: 40 }, { id: 'item_c5_4', name: '無骨鳳爪', price: 40 }] }
-];
+  // 1. 初始化 menu 狀態與分類欄位
+  const [menu, setMenu] = useState(() => {
+    const saved = localStorage.getItem('spicy_menu');
+    if (saved) return JSON.parse(saved);
+    return [
+      { id: 'item_c1_1', name: '招牌麻辣燙套餐', price: 100, category: '套餐' },
+      { id: 'item_c1_2', name: 'A套餐', price: 115, category: '套餐' },
+      { id: 'item_c1_3', name: 'B套餐', price: 130, category: '套餐' },
+      { id: 'item_c1_4', name: 'c套餐', price: 135, category: '套餐' },
+      { id: 'item_c1_5', name: 'D套餐', price: 140, category: '套餐' },
+      { id: 'item_c1_6', name: '老饕套餐', price: 250, category: '套餐' },
+      { id: 'item_c2_1', name: '牛肉片', price: 50, category: '吃不飽加點1' },
+      { id: 'item_c2_2', name: '梅花豬肉', price: 45, category: '吃不飽加點1' },
+      { id: 'item_c2_3', name: '麻辣鴨血', price: 40, category: '吃不飽加點1' },
+      { id: 'item_c2_4', name: '麻辣豆腐', price: 40, category: '吃不飽加點1' },
+      { id: 'item_c2_5', name: '魚餃', price: 25, category: '吃不飽加點1' },
+      { id: 'item_c2_6', name: '燕餃', price: 25, category: '吃不飽加點1' },
+      { id: 'item_c2_7', name: '蟹肉棒', price: 25, category: '吃不飽加點1' },
+      { id: 'item_c2_8', name: '米血糕', price: 25, category: '吃不飽加點1' },
+      { id: 'item_c2_9', name: '豆皮', price: 25, category: '吃不飽加點1' },
+      { id: 'item_c2_10', name: '鑫鑫腸', price: 25, category: '吃不飽加點1' },
+      { id: 'item_c2_11', name: '老油條', price: 35, category: '吃不飽加點1' },
+      { id: 'item_c2_12', name: '黃金魚蛋', price: 25, category: '吃不飽加點1' },
+      { id: 'item_c2_13', name: '科學麵', price: 20, category: '吃不飽加點1' },
+      { id: 'item_c2_14', name: '王子麵', price: 20, category: '吃不飽加點1' },
+      { id: 'item_c3_1', name: '金針菇', price: 25, category: '吃不飽加點2(蔬菜)' },
+      { id: 'item_c3_2', name: '木耳', price: 20, category: '吃不飽加點2(蔬菜)' },
+      { id: 'item_c3_3', name: '玉米筍', price: 25, category: '吃不飽加點2(蔬菜)' },
+      { id: 'item_c3_4', name: '空心菜', price: 25, category: '吃不飽加點2(蔬菜)' },
+      { id: 'item_c3_5', name: '大陸妹', price: 25, category: '吃不飽加點2(蔬菜)' },
+      { id: 'item_c3_6', name: '水蓮', price: 25, category: '吃不飽加點2(蔬菜)' },
+      { id: 'item_c3_7', name: '茼蒿(季節限定)', price: 25, category: '吃不飽加點2(蔬菜)' },
+      { id: 'item_c4_1', name: '牛肉乾拌麵', price: 110, category: '吃麵麵' },
+      { id: 'item_c4_2', name: '豬肉乾拌麵', price: 105, category: '吃麵麵' },
+      { id: 'item_c4_3', name: '銷魂乾拌麵', price: 60, category: '吃麵麵' },
+      { id: 'item_c4_4', name: '烏龍拌麵', price: 60, category: '吃麵麵' },
+      { id: 'item_c5_1', name: '牛肚/牛筋/牛腱', price: 100, category: '秘制滷味' },
+      { id: 'item_c5_2', name: '大腸', price: 60, category: '秘制滷味' },
+      { id: 'item_c5_3', name: '豬耳朵', price: 40, category: '秘制滷味' },
+      { id: 'item_c5_4', name: '無骨鳳爪', price: 40, category: '秘制滷味' }
+    ];
+  });
+
   const [promotions, setPromotions] = useState(() => { const saved = localStorage.getItem('spicy_promotions'); return saved ? JSON.parse(saved) : []; });
   
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [receivedCash, setReceivedCash] = useState('');
   const [selectedDate, setSelectedDate] = useState('ALL');
 
-  // 2. 新增前台分類選擇狀態
   const [selectedCategory, setSelectedCategory] = useState('全部');
 
-  // 新增/編輯 狀態 (加入分類欄位)
   const [newProdName, setNewProdName] = useState('');
   const [newProdPrice, setNewProdPrice] = useState('');
-  const [newProdCategory, setNewProdCategory] = useState(''); // 新增分類狀態
+  const [newProdCategory, setNewProdCategory] = useState(''); 
   const [editingMenuId, setEditingMenuId] = useState(null);
   const [editMenuData, setEditMenuData] = useState({ name: '', price: '', category: '' });
 
@@ -175,10 +208,8 @@ function App() {
   const filteredOrders = selectedDate === 'ALL' ? orders : orders.filter(o => o.date === selectedDate);
   const filteredTotalRevenue = filteredOrders.reduce((sum, o) => sum + Number(o.total), 0);
 
-  // 3. 取得所有不重複的商品分類，供前台標籤使用
   const categories = ['全部', ...Array.from(new Set(menu.map(item => item.category || '未分類')))];
   
-  // 4. 根據選取的分類過濾顯示的商品
   const displayedMenu = selectedCategory === '全部' 
     ? menu 
     : menu.filter(item => (item.category || '未分類') === selectedCategory);
@@ -195,7 +226,6 @@ function App() {
           <div className="flex-1 p-6 overflow-hidden flex flex-col">
             <h1 className="text-xl font-bold mb-4 text-black">🔥 麻辣燙點餐 POS</h1>
             
-            {/* 分類標籤區塊 */}
             <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
               {categories.map(cat => (
                 <button 
@@ -212,7 +242,6 @@ function App() {
               ))}
             </div>
 
-            {/* 過濾後的商品網格 */}
             <div className="flex-1 overflow-y-auto">
               <div className="grid grid-cols-4 gap-4 pb-10">
                 {displayedMenu.map(item => (
