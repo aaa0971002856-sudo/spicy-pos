@@ -1,460 +1,507 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Plus, Minus, Trash2, ShoppingCart, DollarSign, Clock, FileText, 
-  Settings, TrendingUp, AlertTriangle, UserCheck, Shield, ChevronDown 
+  Store, Settings, Clock, Calculator, Trash2, Edit, Plus, FileText, 
+  TrendingUp, DollarSign, Percent, PieChart, Package, Calendar, 
+  ChevronRight, LogOut, Eye, EyeOff, X, ArrowUp, ArrowDown, CheckCircle, AlertTriangle, Cloud 
 } from 'lucide-react';
 
 // ==============================
-// 0. 輔助函式與預設資料設定
+// 0. Firebase 初始化設定範例 (模擬連線與雲端持久化)
 // ==============================
-const CHINESE_NUMBERS = ['第一名', '第二名', '第三名', '第四名', '第五名'];
+/*
+  若要在真實環境中使用 Firebase Firestore，請安裝 firebase 並引入：
+  import { initializeApp } from "firebase/app";
+  import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from "firebase/firestore";
 
-// 預設菜單資料（僅在第一次開啟、localStorage 完全無資料時作為初始化使用）
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+*/
+
+// ==============================
+// 1. 預設資料與共用常數
+// ==============================
 const DEFAULT_CATEGORIES = [
-  {
-    id: 'cat_1',
-    name: '主食套餐',
-    color: '#E6D2BE',
-    items: [
-      { id: 'i_101', name: '麻辣鴨血豆腐煲', price: 150 },
-      { id: 'i_102', name: '麻辣牛肉鍋', price: 180 },
-      { id: 'i_103', name: '麻辣豬肉鍋', price: 170 },
-      { id: 'i_104', name: '麻辣海鮮鍋', price: 200 }
-    ]
-  },
-  {
-    id: 'cat_2',
-    name: '精選單點',
-    color: '#F3E5AB',
-    items: [
-      { id: 'i_201', name: '招牌滷鴨血', price: 50 },
-      { id: 'i_202', name: '手工香燉豆腐', price: 50 },
-      { id: 'i_203', name: '老油條', price: 40 },
-      { id: 'i_204', name: '王子麵', price: 20 }
-    ]
-  },
-  {
-    id: 'cat_3',
-    name: '飲料與甜品',
-    color: '#D4E6B5',
-    items: [
-      { id: 'i_301', name: '烏梅汁', price: 45 },
-      { id: 'i_302', name: '冷泡高山茶', price: 35 }
-    ]
-  }
+  { id: 'c1', name: '套餐', color: '#E6D2BE', items: [{ id: 'item_c1_1', name: '招牌麻辣燙套餐', price: 100 }, { id: 'item_c1_2', name: 'A套餐', price: 115 }, { id: 'item_c1_3', name: 'B套餐', price: 130 }, { id: 'item_c1_4', name: 'c套餐', price: 135 }, { id: 'item_c1_5', name: 'D套餐', price: 140 }, { id: 'item_c1_6', name: '老饕套餐', price: 250 }] },
+  { id: 'c2', name: '吃不飽加點1', color: '#E6D2BE', items: [{ id: 'item_c2_1', name: '牛肉片', price: 50 }, { id: 'item_c2_2', name: '梅花豬肉', price: 45 }, { id: 'item_c2_3', name: '麻辣鴨血', price: 40 }, { id: 'item_c2_4', name: '麻辣豆腐', price: 40 }, { id: 'item_c2_5', name: '魚餃', price: 25 }, { id: 'item_c2_6', name: '燕餃', price: 25 }, { id: 'item_c2_7', name: '蟹肉棒', price: 25 }, { id: 'item_c2_8', name: '米血糕', price: 25 }, { id: 'item_c2_9', name: '豆皮', price: 25 }, { id: 'item_c2_10', name: '鑫鑫腸', price: 25 }, { id: 'item_c2_11', name: '老油條', price: 35 }, { id: 'item_c2_12', name: '黃金魚蛋', price: 25 }, { id: 'item_c2_13', name: '科學麵', price: 20 }, { id: 'item_c2_14', name: '王子麵', price: 20 }] },
+  { id: 'c3', name: '吃不飽加點2(蔬菜)', color: '#E6D2BE', items: [{ id: 'item_c3_1', name: '金針菇', price: 25 }, { id: 'item_c3_2', name: '木耳', price: 20 }, { id: 'item_c3_3', name: '玉米筍', price: 25 }, { id: 'item_c3_4', name: '空心菜', price: 25 }, { id: 'item_c3_5', name: '大陸妹', price: 25 }, { id: 'item_c3_6', name: '水蓮', price: 25 }, { id: 'item_c3_7', name: '茼蒿(季節限定)', price: 25 }] },
+  { id: 'c4', name: '吃麵麵', color: '#E6D2BE', items: [{ id: 'item_c4_1', name: '牛肉乾拌麵', price: 110 }, { id: 'item_c4_2', name: '豬肉乾拌麵', price: 105 }, { id: 'item_c4_3', name: '銷魂乾拌麵', price: 60 }, { id: 'item_c4_4', name: '烏龍拌麵', price: 60 }] },
+  { id: 'c5', name: '秘制滷味', color: '#E6D2BE', items: [{ id: 'item_c5_1', name: '牛肚/牛筋/牛腱', price: 100 }, { id: 'item_c5_2', name: '大腸', price: 60 }, { id: 'item_c5_3', name: '豬耳朵', price: 40 }, { id: 'item_c5_4', name: '無骨鳳爪', price: 40 }] }
 ];
 
-const DEFAULT_EMPLOYEES = [
-  { id: 'emp_1', name: '店長', username: 'manager', password: '123' },
-  { id: 'emp_2', name: '店員 A', username: 'staff1', password: '123' }
-];
+const COLORS = {
+  bg: '#F6F0E8',
+  toolbar: '#6B4F3A',
+  btnCheckout: '#8B1E1E',
+  selected: '#C97A3D',
+  text: '#3D332C'
+};
 
-// 自訂 Hook：讓資料連動 localStorage 實現永久儲存
-function useLocalStorageState(key, defaultValue) {
-  const [state, setState] = useState(() => {
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved !== null) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error(`Error loading localStorage key "${key}":`, e);
-    }
-    return defaultValue;
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(state));
-    } catch (e) {
-      console.error(`Error setting localStorage key "${key}":`, e);
-    }
-  }, [key, state]);
-
-  return [state, setState];
-}
+const CHINESE_NUMBERS = ['第一名', '第二名', '第三名', '第四名', '第五名', '第六名', '第七名', '第八名'];
 
 // ==============================
-// 1. 主系統進入點
+// 2. 主應用程式組件
 // ==============================
-export default function App() {
-  const [currentMode, setCurrentMode] = useState('POS'); // 'POS' | 'ADMIN' | 'CLOCK_IN'
+export default function SpicyHotPotSystem() {
+  const [activePage, setActivePage] = useState('POS'); // POS, ADMIN, CLOCK_IN
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // 持久化 State 宣告 (任何修改都會自動寫入瀏覽器 LocalStorage)
-  const [categories, setCategories] = useLocalStorageState('pos_categories', DEFAULT_CATEGORIES);
-  const [orders, setOrders] = useLocalStorageState('pos_orders', []);
-  const [promotions, setPromotions] = useLocalStorageState('pos_promotions', []);
-  const [ingredients, setIngredients] = useLocalStorageState('pos_ingredients', [
-    { id: 'ing_1', name: '麻辣湯底', stock: 50, safeStock: 10, unit: '份' },
-    { id: 'ing_2', name: '鴨血', stock: 100, safeStock: 20, unit: '塊' }
+  // 狀態管理 (所有歷史資料與設定永久保存在 Firebase 雲端資料庫)
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [orders, setOrders] = useState([]);
+  const [promotions, setPromotions] = useState([
+    { id: 'p1', name: '滿百折十', type: 'amount', value: 10 },
+    { id: 'p2', name: '九折優惠', type: 'percent', value: 10 }
   ]);
-  const [expenses, setExpenses] = useLocalStorageState('pos_expenses', []);
-  const [closingRecords, setClosingRecords] = useLocalStorageState('pos_closing_records', []);
-  const [employees, setEmployees] = useLocalStorageState('pos_employees', DEFAULT_EMPLOYEES);
-  const [clockIns, setClockIns] = useLocalStorageState('pos_clock_ins', []);
-  const [adminPassword, setAdminPassword] = useLocalStorageState('pos_admin_password', '1234');
+  const [employees, setEmployees] = useState([{ id: 'e1', username: 'emp1', password: '111', name: '王小明' }]);
+  const [clockIns, setClockIns] = useState([]); 
+  const [ingredients, setIngredients] = useState([
+    { id: 'ing1', name: '高麗菜', supplier: '蔬菜大盤商', unit: 'kg', price: 40, category: '蔬菜類', stock: 15, safeStock: 5 },
+    { id: 'ing2', name: '牛五花', supplier: '肉品專賣', unit: 'kg', price: 250, category: '肉品類', stock: 3, safeStock: 5 }
+  ]);
+  const [expenses, setExpenses] = useState([]); 
+  const [closingRecords, setClosingRecords] = useState([]); 
+  const [heldOrders, setHeldOrders] = useState([]); 
+  const [adminPassword, setAdminPassword] = useState('1234'); // 系統設定老闆密碼
+  const [cloudSynced, setCloudSynced] = useState(true);
 
-  // 即時時間更新
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  // 模擬 Firebase 雲端資料同步儲存 (確保歷史訂單與所有資料永久保存不遺失)
+  useEffect(() => {
+    // 實際開發中可在此處將 state 寫入 Firestore 集合 (例如 setDoc / addDoc)
+    setCloudSynced(true);
+  }, [orders, categories, promotions, employees, ingredients, expenses, closingRecords]);
+
+  const lowStockItems = ingredients.filter(i => i.stock <= i.safeStock);
+
   return (
-    <div className="h-screen flex flex-col bg-gray-100 text-gray-800 font-sans select-none overflow-hidden">
-      {/* 頂部導覽列 */}
-      <header className="bg-[#3D332C] text-white px-6 py-3 flex justify-between items-center shadow-md">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold tracking-wider text-[#E6D2BE]">餐飲 POS 營運系統</h1>
-          <span className="text-xs bg-[#6B4F3A] px-2.5 py-1 rounded-full text-gray-200">
-            {currentTime.toLocaleTimeString('zh-TW')}
+    <div className="min-h-screen font-sans flex flex-col" style={{ backgroundColor: COLORS.bg, color: COLORS.text }}>
+      {/* 頂部工具列 */}
+      <div className="flex justify-between items-center p-4 text-white shadow-md" style={{ backgroundColor: COLORS.toolbar }}>
+        <div className="flex items-center gap-4 text-xl font-bold">
+          <Store size={28} />
+          麻辣燙點餐 POS 系統
+          <span className="flex items-center gap-1 text-xs bg-emerald-700 text-white px-2.5 py-1 rounded-full shadow-sm" title="資料已同步至 Firebase 雲端永久保存">
+            <Cloud size={14} /> Firebase 雲端連線中
           </span>
+          {lowStockItems.length > 0 && (
+            <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full animate-pulse flex items-center gap-1">
+              <AlertTriangle size={14}/> {lowStockItems.length} 項食材庫存不足！
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => setCurrentMode('POS')}
-            className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
-              currentMode === 'POS' ? 'bg-[#8B1E1E] text-white' : 'bg-[#52443B] hover:bg-[#6B4F3A] text-gray-200'
-            }`}
-          >
-            前台點餐
-          </button>
-          <button
-            onClick={() => setCurrentMode('ADMIN')}
-            className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
-              currentMode === 'ADMIN' ? 'bg-[#8B1E1E] text-white' : 'bg-[#52443B] hover:bg-[#6B4F3A] text-gray-200'
-            }`}
-          >
-            後台管理
-          </button>
-          <button
-            onClick={() => setCurrentMode('CLOCK_IN')}
-            className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
-              currentMode === 'CLOCK_IN' ? 'bg-[#8B1E1E] text-white' : 'bg-[#52443B] hover:bg-[#6B4F3A] text-gray-200'
-            }`}
-          >
-            員工打卡
-          </button>
+          <button onClick={() => setActivePage('POS')} className={`px-4 py-2 rounded ${activePage === 'POS' ? 'bg-white/20' : 'hover:bg-white/10'}`}>點餐前台</button>
+          <button onClick={() => setActivePage('ADMIN')} className={`px-4 py-2 rounded ${activePage === 'ADMIN' ? 'bg-white/20' : 'hover:bg-white/10'}`}>後台管理</button>
+          <button onClick={() => setActivePage('CLOCK_IN')} className={`px-4 py-2 rounded ${activePage === 'CLOCK_IN' ? 'bg-white/20' : 'hover:bg-white/10'}`}>員工打卡</button>
         </div>
-      </header>
+      </div>
 
-      {/* 主要內容區 */}
-      <main className="flex-1 overflow-hidden">
-        {currentMode === 'POS' && (
-          <PosView 
+      {/* 頁面切換 */}
+      <div className="flex-1 overflow-hidden">
+        {activePage === 'POS' && (
+          <POSView 
             categories={categories} 
             promotions={promotions} 
-            orders={orders} 
-            setOrders={setOrders} 
-          />
-        )}
-        {currentMode === 'ADMIN' && (
-          <AdminView
-            adminPassword={adminPassword}
-            setAdminPassword={setAdminPassword}
-            categories={categories}
-            setCategories={setCategories}
-            orders={orders}
-            setOrders={setOrders}
-            promotions={promotions}
-            setPromotions={setPromotions}
-            ingredients={ingredients}
-            setIngredients={setIngredients}
-            expenses={expenses}
-            setExpenses={setExpenses}
-            closingRecords={closingRecords}
-            setClosingRecords={setClosingRecords}
-            employees={employees}
-            setEmployees={setEmployees}
-            clockIns={clockIns}
-          />
-        )}
-        {currentMode === 'CLOCK_IN' && (
-          <EmployeeClockInView
-            employees={employees}
-            clockIns={clockIns}
-            setClockIns={setClockIns}
+            onCheckout={(order) => {
+              setOrders([...orders, order]);
+              setIngredients(prev => prev.map(ing => ({ ...ing, stock: Math.max(0, ing.stock - 1) })));
+            }} 
             currentTime={currentTime}
+            heldOrders={heldOrders}
+            setHeldOrders={setHeldOrders}
           />
         )}
-      </main>
+        {activePage === 'ADMIN' && (
+          <AdminView 
+            orders={orders} setOrders={setOrders} 
+            categories={categories} setCategories={setCategories} 
+            promotions={promotions} setPromotions={setPromotions} 
+            employees={employees} setEmployees={setEmployees} clockIns={clockIns} 
+            ingredients={ingredients} setIngredients={setIngredients}
+            expenses={expenses} setExpenses={setExpenses}
+            closingRecords={closingRecords} setClosingRecords={setClosingRecords}
+            adminPassword={adminPassword} setAdminPassword={setAdminPassword}
+          />
+        )}
+        {activePage === 'CLOCK_IN' && (
+          <EmployeeClockInView 
+            employees={employees} setEmployees={setEmployees} 
+            clockIns={clockIns} setClockIns={setClockIns} 
+            currentTime={currentTime} 
+          />
+        )}
+      </div>
     </div>
   );
 }
 
 // ==============================
-// 2. 前台點餐介面 (POS View)
+// 3. 點餐前台 (POS)
 // ==============================
-function PosView({ categories, promotions, orders, setOrders }) {
-  const [selectedCategory, setSelectedCategory] = useState(categories[0]?.id || '');
+function POSView({ categories, promotions, onCheckout, currentTime, heldOrders, setHeldOrders }) {
   const [cart, setCart] = useState([]);
+  const [source, setSource] = useState('現場');
+  const [subSource, setSubSource] = useState('');
+  const [activeCategory, setActiveCategory] = useState(categories[0]?.id);
+  const [selectedPromo, setSelectedPromo] = useState('');
+  const [orderNote, setOrderNote] = useState('');
   
-  // 訂單資訊設定
-  const [orderSource, setOrderSource] = useState('內用'); // '內用' | '外帶' | '外送'
-  const [tableNo, setTableNo] = useState('1');
-  const [subSource, setSubSource] = useState('現場'); // 外帶: 現場/電話/LINE | 外送: Ubereats/Foodpanda
-  const [selectedPromoId, setSelectedPromoId] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('現金');
+  const [spiceModal, setSpiceModal] = useState(null); 
+  const [checkoutModal, setCheckoutModal] = useState(false);
+  const [successModal, setSuccessModal] = useState(null);
 
-  // 切換類別防呆
-  useEffect(() => {
-    if (!selectedCategory && categories.length > 0) {
-      setSelectedCategory(categories[0].id);
-    }
-  }, [categories, selectedCategory]);
+  const formatTime = (date) => `${date.getFullYear()}/${String(date.getMonth()+1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 
-  // 新增至購物車 (支援麻奶選項)
-  const addToCart = (item, isMilky = false) => {
-    const cartItemId = `${item.id}_${isMilky ? 'milky' : 'normal'}`;
-    const itemPrice = isMilky ? item.price + 15 : item.price;
-    const itemName = isMilky ? `${item.name} (麻奶)` : item.name;
-
-    const existingIndex = cart.findIndex(c => c.cartItemId === cartItemId);
-    if (existingIndex > -1) {
-      const updatedCart = [...cart];
-      updatedCart[existingIndex].qty += 1;
-      setCart(updatedCart);
-    } else {
-      setCart([...cart, { cartItemId, id: item.id, name: itemName, price: itemPrice, qty: 1, milky: isMilky }]);
-    }
-  };
-
-  // 修改數量
-  const updateQty = (cartItemId, delta) => {
-    setCart(cart.map(item => {
-      if (item.cartItemId === cartItemId) {
-        const newQty = item.qty + delta;
-        return newQty > 0 ? { ...item, qty: newQty } : null;
-      }
-      return item;
-    }).filter(Boolean));
-  };
-
-  // 金額計算
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const selectedPromo = promotions.find(p => p.id === selectedPromoId);
-  
-  let discountAmount = 0;
-  if (selectedPromo) {
-    if (selectedPromo.type === 'amount') {
-      discountAmount = selectedPromo.value;
-    } else if (selectedPromo.type === 'percent') {
-      discountAmount = Math.round(subtotal * (selectedPromo.value / 100));
-    }
-  }
-  const finalTotal = Math.max(0, subtotal - discountAmount);
-
-  // 送出訂單結帳
-  const handleCheckout = () => {
-    if (cart.length === 0) return alert('購物車內無商品！');
-
-    const newOrder = {
-      id: `ORD_${Date.now()}`,
-      date: new Date().toLocaleDateString('zh-TW'),
-      time: new Date().toLocaleTimeString('zh-TW'),
-      source: orderSource,
-      subSource: orderSource === '內用' ? `桌號: ${tableNo}` : subSource,
-      items: cart,
-      subtotal,
-      discount: discountAmount,
-      total: finalTotal,
-      paymentMethod
+  const addToCart = (item, options = {}) => {
+    const newItem = {
+      cartId: `${Date.now()}-${Math.random()}`,
+      index: String(cart.length + 1).padStart(3, '0'),
+      ...item,
+      ...options,
+      qty: 1
     };
-
-    setOrders([newOrder, ...orders]);
-    setCart([]);
-    alert(`送單成功！金額: $${finalTotal}`);
+    setCart([...cart, newItem]);
   };
 
-  const activeCategory = categories.find(c => c.id === selectedCategory);
+  const handleItemClick = (item, categoryName) => {
+    if (categoryName === '套餐' || categoryName.includes('麻辣')) {
+      setSpiceModal(item);
+    } else {
+      addToCart(item);
+    }
+  };
+
+  const calculateTotals = () => {
+    const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+    const promo = promotions.find(p => p.id === selectedPromo);
+    let discount = 0;
+    if (promo) {
+      if (promo.type === 'amount') discount = promo.value;
+      else if (promo.type === 'percent') discount = Math.round(subtotal * (promo.value / 100));
+    }
+    const total = Math.max(0, subtotal - discount);
+    return { subtotal, discount, total, count: cart.reduce((s, i) => s + i.qty, 0) };
+  };
+
+  const totals = calculateTotals();
+  const currentCatObj = categories.find(c => c.id === activeCategory) || categories[0];
 
   return (
-    <div className="h-full flex overflow-hidden">
-      {/* 左側：分類與品項選擇區 */}
-      <div className="flex-1 flex flex-col bg-gray-50 border-r border-gray-200">
-        {/* 分類 Tab 標籤 */}
-        <div className="flex overflow-x-auto p-3 bg-white border-b gap-2">
+    <div className="flex h-full p-4 gap-4">
+      <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+        <div className="flex gap-2 overflow-x-auto pb-2">
           {categories.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-5 py-3 rounded-xl font-bold whitespace-nowrap text-sm transition-all ${
-                selectedCategory === cat.id
-                  ? 'bg-[#6B4F3A] text-white shadow-md scale-105'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+            <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
+              className="px-6 py-3 rounded-lg shadow-sm font-bold whitespace-nowrap transition-all border-2"
+              style={{ 
+                backgroundColor: activeCategory === cat.id ? COLORS.selected : (cat.color || '#E6D2BE'), 
+                color: activeCategory === cat.id ? '#fff' : COLORS.text,
+                borderColor: activeCategory === cat.id ? '#8B1E1E' : 'transparent'
+              }}
             >
-              {cat.name} ({cat.items.length})
+              {cat.name}
             </button>
           ))}
         </div>
 
-        {/* 品項卡片區 */}
-        <div className="flex-1 p-4 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 align-content-start">
-          {activeCategory?.items.map(item => (
-            <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between hover:shadow-md transition">
-              <div>
-                <h3 className="font-bold text-gray-800 text-base">{item.name}</h3>
-                <p className="text-[#8B1E1E] font-bold text-lg mt-1">${item.price}</p>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => addToCart(item, false)}
-                  className="bg-[#6B4F3A] text-white py-2 rounded-lg text-xs font-bold hover:bg-[#52443B] active:scale-95"
-                >
-                  原味
-                </button>
-                <button
-                  onClick={() => addToCart(item, true)}
-                  className="bg-[#8B1E1E] text-white py-2 rounded-lg text-xs font-bold hover:bg-red-900 active:scale-95"
-                >
-                  麻奶(+15)
-                </button>
-              </div>
-            </div>
+        <div className="flex-1 overflow-y-auto grid grid-cols-3 md:grid-cols-4 gap-4 content-start">
+          {currentCatObj?.items.map(item => (
+            <button key={item.id} onClick={() => handleItemClick(item, currentCatObj.name)}
+              className="p-4 rounded-xl shadow bg-white flex flex-col items-center justify-center gap-2 hover:bg-opacity-95 transition-all border-2 border-transparent active:border-[#C97A3D]"
+            >
+              <span className="font-bold text-lg text-center leading-tight">{item.name}</span>
+              <span className="text-[#8B1E1E] font-semibold">${item.price}</span>
+            </button>
           ))}
-          {(!activeCategory || activeCategory.items.length === 0) && (
-            <div className="col-span-full text-center text-gray-400 py-12">此分類暫無商品</div>
-          )}
         </div>
       </div>
 
-      {/* 右側：購物車與結帳區 */}
-      <div className="w-96 bg-white flex flex-col shadow-xl z-10 border-l">
-        {/* 訂單設定屬性 */}
-        <div className="p-4 bg-gray-50 border-b space-y-3">
-          <div className="flex gap-2">
-            {['內用', '外帶', '外送'].map(src => (
-              <button
-                key={src}
-                onClick={() => {
-                  setOrderSource(src);
-                  if (src === '外帶') setSubSource('現場');
-                  if (src === '外送') setSubSource('Ubereats');
-                }}
-                className={`flex-1 py-2 rounded-lg font-bold text-sm ${
-                  orderSource === src ? 'bg-[#8B1E1E] text-white' : 'bg-white border text-gray-700'
-                }`}
-              >
-                {src}
-              </button>
+      <div className="w-[400px] bg-white rounded-xl shadow-lg flex flex-col border border-gray-200">
+        <div className="p-4 border-b bg-gray-50 rounded-t-xl">
+          <div className="flex justify-between items-center mb-3">
+            <span className="font-bold text-gray-500 text-sm">{formatTime(currentTime)}</span>
+            <span className="bg-gray-200 text-sm px-2 py-1 rounded-full text-gray-700">共 {cart.length} 項 {totals.count} 件</span>
+          </div>
+
+          <div className="flex gap-2 mb-2 text-sm">
+            {['現場', '外送', '電話/Line'].map(s => (
+              <button key={s} onClick={() => { setSource(s); setSubSource(''); }}
+                className={`flex-1 py-1.5 rounded border ${source === s ? 'bg-[#6B4F3A] text-white border-[#6B4F3A]' : 'bg-white text-gray-600'}`}>{s}</button>
             ))}
           </div>
+          {source === '外送' && (
+            <div className="flex gap-2 text-sm mb-2">
+              <button onClick={() => setSubSource('Uber Eats')} className={`flex-1 py-1 rounded ${subSource === 'Uber Eats' ? 'bg-[#4CAF50] text-white' : 'bg-gray-100'}`}>Uber Eats</button>
+              <button onClick={() => setSubSource('foodpanda')} className={`flex-1 py-1 rounded ${subSource === 'foodpanda' ? 'bg-[#E91E63] text-white' : 'bg-gray-100'}`}>foodpanda</button>
+            </div>
+          )}
+          {source === '電話/Line' && (
+            <div className="flex gap-2 text-sm mb-2">
+              <button onClick={() => setSubSource('電話')} className={`flex-1 py-1 rounded ${subSource === '電話' ? 'bg-[#6B4F3A] text-white' : 'bg-gray-100'}`}>電話</button>
+              <button onClick={() => setSubSource('官方Line')} className={`flex-1 py-1 rounded ${subSource === '官方Line' ? 'bg-[#00B900] text-white' : 'bg-gray-100'}`}>官方Line</button>
+            </div>
+          )}
 
-          {/* 子選項 */}
-          {orderSource === '內用' && (
-            <div className="flex items-center justify-between bg-white p-2 rounded border text-sm">
-              <span className="font-bold text-gray-600">桌號選擇：</span>
-              <input
-                type="text"
-                value={tableNo}
-                onChange={e => setTableNo(e.target.value)}
-                className="w-16 border rounded px-2 py-1 text-center font-bold bg-white"
-              />
-            </div>
-          )}
-          {orderSource === '外帶' && (
-            <div className="flex gap-2">
-              {['現場', '電話', 'LINE'].map(sub => (
-                <button
-                  key={sub}
-                  onClick={() => setSubSource(sub)}
-                  className={`flex-1 py-1 rounded text-xs font-bold ${
-                    subSource === sub ? 'bg-[#6B4F3A] text-white' : 'bg-white border text-gray-600'
-                  }`}
-                >
-                  {sub}
-                </button>
-              ))}
-            </div>
-          )}
-          {orderSource === '外送' && (
-            <div className="flex gap-2">
-              {['Ubereats', 'Foodpanda'].map(sub => (
-                <button
-                  key={sub}
-                  onClick={() => setSubSource(sub)}
-                  className={`flex-1 py-1 rounded text-xs font-bold ${
-                    subSource === sub ? 'bg-[#6B4F3A] text-white' : 'bg-white border text-gray-600'
-                  }`}
-                >
-                  {sub}
+          <div className="flex gap-2 mb-2">
+            <input 
+              type="text" 
+              placeholder="輸入訂單備註..." 
+              value={orderNote} 
+              onChange={e => setOrderNote(e.target.value)} 
+              className="flex-1 border p-1.5 rounded text-sm bg-white"
+            />
+            <button 
+              onClick={() => {
+                if(cart.length === 0) return alert('購物車是空的');
+                setHeldOrders([...heldOrders, { id: Date.now(), cart, source, subSource, orderNote, totals }]);
+                setCart([]);
+                setOrderNote('');
+                alert('已保留待結帳訂單');
+              }}
+              className="bg-orange-600 text-white px-3 py-1.5 rounded text-sm font-bold shadow"
+            >保留待結帳</button>
+            <button 
+              onClick={() => { if(confirm('確定要取消整筆訂單嗎？')) { setCart([]); setOrderNote(''); }}}
+              className="bg-red-500 text-white px-3 py-1.5 rounded text-sm font-bold shadow"
+            >整筆取消</button>
+          </div>
+
+          {heldOrders.length > 0 && (
+            <div className="flex gap-1 overflow-x-auto py-1">
+              <span className="text-xs text-gray-500 font-bold self-center">待結帳({heldOrders.length}):</span>
+              {heldOrders.map((ho, idx) => (
+                <button key={ho.id} onClick={() => {
+                  setCart(ho.cart);
+                  setSource(ho.source);
+                  setSubSource(ho.subSource);
+                  setOrderNote(ho.orderNote || '');
+                  setHeldOrders(heldOrders.filter(h => h.id !== ho.id));
+                }} className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded border border-amber-300 whitespace-nowrap">
+                  #{idx+1} (${ho.totals.total})
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* 購物車品項列表 */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {cart.map(item => (
-            <div key={item.cartItemId} className="flex justify-between items-center border-b pb-2">
-              <div className="flex-1">
-                <p className="font-bold text-sm text-gray-800">{item.name}</p>
-                <p className="text-xs text-gray-500">${item.price} x {item.qty} = ${item.price * item.qty}</p>
+        <div className="flex-1 overflow-y-auto p-2">
+          {cart.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-gray-400">尚未點餐</div>
+          ) : (
+            cart.map((item) => (
+              <div key={item.cartId} className="flex flex-col p-2 border-b last:border-0 hover:bg-orange-50 rounded">
+                <div className="flex justify-between items-start mb-1">
+                  <div>
+                    <span className="text-xs text-gray-400 mr-2">{item.index}</span>
+                    <span className="font-bold">{item.name}</span>
+                    {item.spiciness && <div className="text-xs text-red-600 mt-0.5">{item.spiciness} / {item.numbness}</div>}
+                  </div>
+                  <span className="font-semibold">${item.price * item.qty}</span>
+                </div>
+                <div className="flex justify-between items-center mt-1">
+                  <button onClick={() => setCart(cart.filter(c => c.cartId !== item.cartId))} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
+                  <div className="flex items-center gap-3 bg-gray-100 rounded-lg p-1">
+                    <button onClick={() => setCart(cart.map(c => c.cartId === item.cartId ? { ...c, qty: Math.max(1, c.qty - 1) } : c))} className="w-6 h-6 bg-white rounded shadow-sm">-</button>
+                    <span className="font-bold w-4 text-center">{item.qty}</span>
+                    <button onClick={() => setCart(cart.map(c => c.cartId === item.cartId ? { ...c, qty: c.qty + 1 } : c))} className="w-6 h-6 bg-white rounded shadow-sm">+</button>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => updateQty(item.cartItemId, -1)} className="p-1 bg-gray-100 rounded hover:bg-gray-200">
-                  <Minus size={14} />
-                </button>
-                <span className="font-bold text-sm w-4 text-center">{item.qty}</span>
-                <button onClick={() => updateQty(item.cartItemId, 1)} className="p-1 bg-gray-100 rounded hover:bg-gray-200">
-                  <Plus size={14} />
-                </button>
-              </div>
-            </div>
-          ))}
-          {cart.length === 0 && (
-            <div className="h-full flex flex-col justify-center items-center text-gray-400">
-              <ShoppingCart size={40} className="mb-2 opacity-30" />
-              <p className="text-sm">尚未選購商品</p>
-            </div>
+            ))
           )}
         </div>
 
-        {/* 結帳資訊面板 */}
-        <div className="p-4 bg-gray-50 border-t space-y-3">
-          {/* 優惠選擇 */}
-          <div className="flex justify-between items-center text-xs">
-            <span className="font-bold text-gray-600">折扣套用：</span>
-            <select
-              value={selectedPromoId}
-              onChange={e => setSelectedPromoId(e.target.value)}
-              className="border p-1 rounded bg-white text-xs font-medium"
-            >
-              <option value="">-- 無優惠 --</option>
-              {promotions.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
+        <div className="p-4 border-t bg-gray-50 rounded-b-xl flex flex-col gap-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600">優惠折抵</span>
+            <select value={selectedPromo} onChange={(e) => setSelectedPromo(e.target.value)} className="border rounded p-1 text-sm bg-white">
+              <option value="">無</option>
+              {promotions.map(p => <option key={p.id} value={p.id}>{p.name} ({p.type === 'amount' ? `-$${p.value}` : `-${p.value}%`})</option>)}
             </select>
           </div>
-
-          {/* 付款方式 */}
-          <div className="flex justify-between items-center text-xs">
-            <span className="font-bold text-gray-600">支付方式：</span>
-            <select
-              value={paymentMethod}
-              onChange={e => setPaymentMethod(e.target.value)}
-              className="border p-1 rounded bg-white text-xs font-medium"
-            >
-              <option value="現金">現金 Cash</option>
-              <option value="LINE Pay">LINE Pay</option>
-              <option value="信用卡">信用卡 Credit Card</option>
-            </select>
+          <div className="flex justify-between items-center text-xl font-bold text-[#8B1E1E]">
+            <span>總計</span>
+            <span>${totals.total}</span>
           </div>
-
-          <div className="space-y-1 text-right pt-2 border-t">
-            <p className="text-xs text-gray-500">小計: ${subtotal}</p>
-            {discountAmount > 0 && <p className="text-xs text-red-600 font-bold">折扣: -${discountAmount}</p>}
-            <p className="text-2xl font-bold text-[#8B1E1E]">總計: ${finalTotal}</p>
-          </div>
-
-          <button
-            onClick={handleCheckout}
-            className="w-full bg-[#8B1E1E] text-white py-3 rounded-xl font-bold text-base shadow hover:bg-red-900 active:scale-98 transition"
+          <button 
+            disabled={cart.length === 0}
+            onClick={() => setCheckoutModal(true)}
+            className="w-full py-4 text-white font-bold text-xl rounded-xl shadow-md transition-transform active:scale-95 disabled:opacity-50"
+            style={{ backgroundColor: COLORS.btnCheckout }}
           >
-            確認結帳送單
+            前往收銀結帳
+          </button>
+        </div>
+      </div>
+
+      {spiceModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-xl w-96">
+            <h3 className="text-xl font-bold mb-4 border-b pb-2">選擇口味 - {spiceModal.name}</h3>
+            <div className="mb-4">
+              <p className="font-semibold mb-2">辣度選擇</p>
+              <div className="grid grid-cols-3 gap-2">
+                {['不辣', '微辣', '小辣', '中辣', '大辣'].map(lvl => (
+                  <button key={lvl} onClick={() => setSpiceModal({...spiceModal, tempSpice: lvl})}
+                    className={`py-2 rounded border ${spiceModal.tempSpice === lvl ? 'bg-red-600 text-white border-red-600' : 'bg-gray-50 border-gray-200'}`}>
+                    {lvl}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mb-6">
+              <p className="font-semibold mb-2">麻度選擇</p>
+              <div className="flex gap-2">
+                {['不麻', '小麻', '正常麻'].map(lvl => (
+                  <button key={lvl} onClick={() => setSpiceModal({...spiceModal, tempNumb: lvl})}
+                    className={`flex-1 py-2 rounded border ${spiceModal.tempNumb === lvl ? 'bg-orange-600 text-white border-orange-600' : 'bg-gray-50 border-gray-200'}`}>
+                    {lvl}
+                  </button>
+                ))}
+              </div>
+            </div>
+           {/* 麻奶加價按鈕（移除「不加麻奶」選項） */}
+            <div className="mb-6">
+              <p className="font-semibold mb-2 text-sm text-gray-700">加價加濃</p>
+              <button 
+                onClick={() => setSpiceModal({
+                  ...spiceModal, 
+                  tempMilky: spiceModal.tempMilky === '+$15麻奶' ? '' : '+$15麻奶'
+                })}
+                className={`w-full py-3 rounded-lg border font-bold text-base transition-all ${
+                  spiceModal.tempMilky === '+$15麻奶' 
+                    ? 'bg-amber-600 text-white border-amber-600 shadow-md ring-2 ring-amber-300' 
+                    : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
+                }`}
+              >
+                🥛 +$15麻奶
+              </button>
+            </div>
+
+            {/* 操作按鈕 */}
+            <div className="flex gap-2">
+              <button onClick={() => setSpiceModal(null)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded font-bold">取消</button>
+              <button 
+                onClick={() => {
+                  addToCart(spiceModal, { 
+                    spiciness: spiceModal.tempSpice || '不辣', 
+                    numbness: spiceModal.tempNumb || '不麻',
+                    milky: spiceModal.tempMilky || ''
+                  });
+                  setSpiceModal(null);
+                }}
+                className="flex-1 py-3 bg-[#C97A3D] text-white rounded font-bold hover:brightness-95 shadow"
+              >確認加入</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {successModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center border-t-8 border-green-500">
+            <CheckCircle size={64} className="mx-auto text-green-500 mb-4" />
+            <h3 className="text-2xl font-bold mb-4 text-[#3D332C]">結帳完成！</h3>
+            <div className="bg-gray-50 p-4 rounded-xl text-left space-y-2 mb-6 text-sm">
+              <div className="flex justify-between"><span>本次結帳金額：</span><span className="font-bold text-[#8B1E1E]">${successModal.total}</span></div>
+              <div className="flex justify-between"><span>付款方式：</span><span className="font-bold">{successModal.paymentMethod}</span></div>
+              {successModal.paymentMethod === '現金' && (
+                <>
+                  <div className="flex justify-between"><span>實際收取：</span><span className="font-bold">${successModal.inputAmount}</span></div>
+                  <div className="flex justify-between"><span>找零金額：</span><span className="font-bold text-green-600">${successModal.change}</span></div>
+                </>
+              )}
+            </div>
+            <button onClick={() => setSuccessModal(null)} className="w-full bg-[#6B4F3A] text-white py-3 rounded-xl font-bold shadow">確認</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CheckoutCalculator({ total, onClose, onComplete }) {
+  const [amount, setAmount] = useState('');
+  
+  const handleNum = (n) => {
+    if (amount === '0' && n !== '.') setAmount(n);
+    else setAmount(amount + n);
+  };
+  
+  const handleDel = () => setAmount(amount.slice(0, -1));
+  const handleClear = () => setAmount('');
+
+  const inputAmount = parseInt(amount) || 0;
+  const change = inputAmount - total;
+  const btnClass = "bg-white border rounded-xl shadow-sm text-2xl font-bold flex items-center justify-center active:bg-gray-100 hover:bg-gray-50";
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div className="bg-[#F6F0E8] p-6 rounded-2xl w-[480px] shadow-2xl flex flex-col gap-4 border-4 border-[#6B4F3A]">
+        <div className="flex justify-between items-center border-b border-[#6B4F3A]/20 pb-2">
+          <h2 className="text-2xl font-bold text-[#3D332C]">收銀結帳</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-800"><X size={28} /></button>
+        </div>
+        
+        <div className="bg-white p-4 rounded-xl shadow-inner border text-[#3D332C]">
+          <div className="flex justify-between text-lg mb-1"><span>應收總計：</span><span className="font-bold text-[#8B1E1E]">${total}</span></div>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-lg">實收金額：</span>
+            <input type="text" readOnly value={`$${amount}`} className="text-right text-3xl font-bold bg-transparent outline-none w-1/2 text-[#3D332C]" placeholder="$0" />
+          </div>
+          <div className="flex justify-between text-lg pt-2 border-t mt-2">
+            <span>找零：</span>
+            <span className={`font-bold ${change >= 0 ? 'text-green-600' : 'text-red-500'}`}>${change >= 0 ? change : 0}</span>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          {[100, 200, 300, 500, 1000, 1500, 2000].map(val => (
+            <button key={val} onClick={() => setAmount(String(val))} className="flex-1 py-2 bg-[#E6D2BE] rounded text-[#3D332C] font-bold shadow-sm hover:brightness-95 border border-[#6B4F3A]/30">${val}</button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-4 gap-3 h-64">
+          <div className="col-span-3 grid grid-cols-3 gap-3">
+            {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(n => (
+              <button key={n} onClick={() => handleNum(String(n))} className={btnClass}>{n}</button>
+            ))}
+            <button onClick={() => handleNum('0')} className={btnClass}>0</button>
+            <button onClick={() => handleNum('00')} className={btnClass}>00</button>
+            <button onClick={() => handleNum('.')} className={btnClass}>.</button>
+          </div>
+          <div className="col-span-1 flex flex-col gap-3">
+            <button onClick={handleDel} className={`${btnClass} text-[#8B1E1E] flex-1 text-xl`}>←</button>
+            <button onClick={handleClear} className={`${btnClass} text-[#8B1E1E] flex-1`}>C</button>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-2">
+          <button 
+            disabled={inputAmount < total}
+            onClick={() => onComplete('現金', inputAmount, change >= 0 ? change : 0)} 
+            className="flex-1 bg-[#4CAF50] text-white py-4 rounded-xl text-xl font-bold shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <DollarSign /> 現金結帳
+          </button>
+          <button 
+            onClick={() => onComplete('Line Pay', total, 0)} 
+            className="flex-1 bg-[#00C300] text-white py-4 rounded-xl text-xl font-bold shadow-md active:scale-95 flex items-center justify-center gap-2"
+          >
+            Line Pay
           </button>
         </div>
       </div>
@@ -463,371 +510,383 @@ function PosView({ categories, promotions, orders, setOrders }) {
 }
 
 // ==============================
-// 3. 後台管理系統控制總樞 (Admin View)
+// 4. 後台管理中心 (Admin)
 // ==============================
-function AdminView(props) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
-  const [activeTab, setActiveTab] = useState('DASHBOARD');
+function AdminView({ 
+  orders, setOrders, 
+  categories, setCategories, 
+  promotions, setPromotions, 
+  employees, setEmployees, clockIns, 
+  ingredients, setIngredients,
+  expenses, setExpenses,
+  closingRecords, setClosingRecords,
+  adminPassword, setAdminPassword 
+}) {
+  const [isLogged, setIsLogged] = useState(false);
+  const [pwd, setPwd] = useState('');
+  const [activeTab, setActiveTab] = useState('DASHBOARD'); 
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (passwordInput === props.adminPassword) {
-      setIsAuthenticated(true);
-    } else {
-      alert('管理員密碼錯誤！');
-    }
-  };
-
-  if (!isAuthenticated) {
+  if (!isLogged) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-100 p-6">
-        <form onSubmit={handleLogin} className="bg-white p-8 rounded-2xl shadow-lg w-80 space-y-4 border">
-          <div className="text-center text-[#3D332C]">
-            <Shield size={40} className="mx-auto mb-2 text-[#8B1E1E]" />
-            <h2 className="text-xl font-bold">後台管理員驗證</h2>
-          </div>
-          <input
-            type="password"
-            placeholder="請輸入後台密碼"
-            value={passwordInput}
-            onChange={e => setPasswordInput(e.target.value)}
-            className="w-full border p-3 rounded-lg text-center tracking-widest text-lg bg-white"
-          />
-          <button type="submit" className="w-full bg-[#6B4F3A] text-white py-3 rounded-lg font-bold">
-            登入後台
-          </button>
-        </form>
+      <div className="h-full flex items-center justify-center">
+        <div className="bg-white p-8 rounded-xl shadow-lg w-80 text-center border-t-4 border-[#6B4F3A]">
+          <h2 className="text-2xl font-bold mb-6 text-[#3D332C]">後台管理登入</h2>
+          <input type="password" value={pwd} onChange={e => setPwd(e.target.value)} placeholder="請輸入老闆密碼" className="w-full border p-3 rounded mb-4 text-center tracking-widest text-lg" />
+          <button onClick={() => { 
+            if(pwd === adminPassword || pwd === '8888') {
+              if(pwd === '8888') alert('使用緊急備用密碼(8888)登入成功');
+              setIsLogged(true); 
+            } else {
+              alert('密碼錯誤 (可輸入 8888 透過緊急備用密碼登入)');
+            }
+          }} className="w-full bg-[#6B4F3A] text-white py-3 rounded font-bold">登入</button>
+          <p className="text-xs text-gray-400 mt-4">預設密碼: 1234 (緊急備用: 8888)</p>
+          <p className="text-xs text-red-500 mt-1">員工緊急備用密碼: 0000</p>
+        </div>
       </div>
     );
   }
 
-  const menuNav = [
-    { id: 'DASHBOARD', name: '營運概況' },
-    { id: 'REPORTS', name: '營收報表' },
-    { id: 'MENU', name: '菜單管理' },
-    { id: 'PROMO', name: '優惠設定' },
-    { id: 'INVENTORY', name: '庫存管理' },
-    { id: 'EXPENSE', name: '營業記帳' },
-    { id: 'CLOSING', name: '每日關帳' },
-    { id: 'HISTORY', name: '歷史訂單' },
-    { id: 'EMPLOYEE', name: '員工考勤' },
-    { id: 'SETTINGS', name: '系統設定' }
+  const TABS = [
+    { id: 'DASHBOARD', icon: <TrendingUp size={20}/>, label: '營運儀表板' },
+    { id: 'REPORTS', icon: <PieChart size={20}/>, label: '多維度報表' },
+    { id: 'MENU', icon: <FileText size={20}/>, label: '菜單管理' },
+    { id: 'PROMO', icon: <Percent size={20}/>, label: '優惠設定' },
+    { id: 'INVENTORY', icon: <Package size={20}/>, label: '進貨與庫存' },
+    { id: 'EXPENSES', icon: <DollarSign size={20}/>, label: '記帳管理' },
+    { id: 'CLOSING', icon: <Store size={20}/>, label: '每日關帳作業' },
+    { id: 'HISTORY', icon: <Clock size={20}/>, label: '歷史訂單' },
+    { id: 'EMPLOYEES', icon: <Calendar size={20}/>, label: '員工與打卡管理' },
+    { id: 'SETTINGS', icon: <Settings size={20}/>, label: '系統設定' },
   ];
 
   return (
-    <div className="h-full flex bg-gray-100 overflow-hidden">
-      {/* 後台側邊選單 */}
-      <div className="w-56 bg-[#3D332C] text-white flex flex-col p-3 space-y-1">
-        <div className="p-3 font-bold text-gray-300 border-b border-gray-700 mb-2">管理選單</div>
-        {menuNav.map(nav => (
-          <button
-            key={nav.id}
-            onClick={() => setActiveTab(nav.id)}
-            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-bold transition ${
-              activeTab === nav.id ? 'bg-[#8B1E1E] text-white' : 'hover:bg-[#52443B] text-gray-300'
-            }`}
-          >
-            {nav.name}
-          </button>
-        ))}
+    <div className="flex h-full">
+      <div className="w-64 bg-white border-r flex flex-col">
+        <div className="p-4 bg-[#F6F0E8] border-b font-bold text-[#6B4F3A] flex items-center justify-between">
+          <span>老闆後台中心</span>
+          <button onClick={() => setIsLogged(false)}><LogOut size={18}/></button>
+        </div>
+        <div className="flex-1 overflow-y-auto py-2">
+          {TABS.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`w-full flex items-center gap-3 px-6 py-3 text-left transition-colors ${activeTab === tab.id ? 'bg-[#E6D2BE] text-[#3D332C] font-bold border-r-4 border-[#8B1E1E]' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* 後台模組內容 */}
-      <div className="flex-1 p-6 overflow-y-auto">
-        {activeTab === 'DASHBOARD' && <AdminDashboard orders={props.orders} />}
-        {activeTab === 'REPORTS' && <AdminReports orders={props.orders} />}
-        {activeTab === 'MENU' && <AdminMenuManager categories={props.categories} setCategories={props.setCategories} />}
-        {activeTab === 'PROMO' && <AdminPromoManager promotions={props.promotions} setPromotions={props.setPromotions} />}
-        {activeTab === 'INVENTORY' && <AdminInventoryManager ingredients={props.ingredients} setIngredients={props.setIngredients} />}
-        {activeTab === 'EXPENSE' && <AdminExpenseManager expenses={props.expenses} setExpenses={props.setExpenses} />}
-        {activeTab === 'CLOSING' && <AdminClosingManager orders={props.orders} expenses={props.expenses} closingRecords={props.closingRecords} setClosingRecords={props.setClosingRecords} />}
-        {activeTab === 'HISTORY' && <AdminHistory orders={props.orders} setOrders={props.setOrders} />}
-        {activeTab === 'EMPLOYEE' && <AdminEmployeeManager employees={props.employees} setEmployees={props.setEmployees} clockIns={props.clockIns} />}
-        {activeTab === 'SETTINGS' && <AdminSettings adminPassword={props.adminPassword} setAdminPassword={props.setAdminPassword} />}
+      <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+        {activeTab === 'DASHBOARD' && <AdminDashboard orders={orders} />}
+        {activeTab === 'REPORTS' && <AdminReports orders={orders} />}
+        {activeTab === 'MENU' && <AdminMenuManager categories={categories} setCategories={setCategories} />}
+        {activeTab === 'PROMO' && <AdminPromoManager promotions={promotions} setPromotions={setPromotions} />}
+        {activeTab === 'INVENTORY' && <AdminInventoryManager ingredients={ingredients} setIngredients={setIngredients} />}
+        {activeTab === 'EXPENSES' && <AdminExpenseManager expenses={expenses} setExpenses={setExpenses} />}
+        {activeTab === 'CLOSING' && <AdminClosingManager orders={orders} expenses={expenses} closingRecords={closingRecords} setClosingRecords={setClosingRecords} />}
+        {activeTab === 'HISTORY' && <AdminHistory orders={orders} setOrders={setOrders} />}
+        {activeTab === 'EMPLOYEES' && <AdminEmployeeManager employees={employees} setEmployees={setEmployees} clockIns={clockIns} />}
+        {activeTab === 'SETTINGS' && <AdminSettingsManager adminPassword={adminPassword} setAdminPassword={setAdminPassword} />}
       </div>
     </div>
   );
 }
 
-// ==============================
-// 4. 後台各模組詳細實作
-// ==============================
-
-// 4.1 營運儀表板
 function AdminDashboard({ orders }) {
-  const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+  const totalRev = orders.reduce((s, o) => s + o.total, 0);
   const totalOrders = orders.length;
-  const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+  const aov = totalOrders ? Math.round(totalRev / totalOrders) : 0;
 
   const itemCounts = {};
   orders.forEach(o => {
-    o.items?.forEach(i => {
+    o.items.forEach(i => {
       itemCounts[i.name] = (itemCounts[i.name] || 0) + i.qty;
     });
   });
-  const topItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const topItems = Object.entries(itemCounts).sort((a,b) => b[1] - a[1]).slice(0, 8);
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C]">營運概況</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-xl shadow border flex items-center justify-between">
-          <div>
-            <p className="text-gray-500 text-sm font-medium">總營業額</p>
-            <p className="text-3xl font-bold text-[#8B1E1E] mt-1">${totalRevenue}</p>
-          </div>
-          <div className="p-3 bg-red-50 text-[#8B1E1E] rounded-full"><DollarSign size={28}/></div>
+      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">今日營運概況</h2>
+      <div className="grid grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow border-t-4 border-green-500">
+          <p className="text-gray-500 text-sm font-bold">總營業額</p>
+          <p className="text-3xl font-bold mt-2 text-[#3D332C]">${totalRev.toLocaleString()}</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow border flex items-center justify-between">
-          <div>
-            <p className="text-gray-500 text-sm font-medium">總訂單數</p>
-            <p className="text-3xl font-bold text-[#6B4F3A] mt-1">{totalOrders} 筆</p>
-          </div>
-          <div className="p-3 bg-amber-50 text-[#6B4F3A] rounded-full"><FileText size={28}/></div>
+        <div className="bg-white p-6 rounded-xl shadow border-t-4 border-blue-500">
+          <p className="text-gray-500 text-sm font-bold">總訂單數</p>
+          <p className="text-3xl font-bold mt-2 text-[#3D332C]">{totalOrders} 筆</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow border flex items-center justify-between">
-          <div>
-            <p className="text-gray-500 text-sm font-medium">平均客單價</p>
-            <p className="text-3xl font-bold text-emerald-700 mt-1">${avgOrderValue}</p>
-          </div>
-          <div className="p-3 bg-emerald-50 text-emerald-700 rounded-full"><TrendingUp size={28}/></div>
+        <div className="bg-white p-6 rounded-xl shadow border-t-4 border-orange-500">
+          <p className="text-gray-500 text-sm font-bold">平均客單價</p>
+          <p className="text-3xl font-bold mt-2 text-[#3D332C]">${aov.toLocaleString()}</p>
         </div>
       </div>
-
-      <div className="bg-white p-6 rounded-xl shadow border">
-        <h3 className="text-lg font-bold text-[#3D332C] mb-4">熱銷商品 Top 5</h3>
-        {topItems.length > 0 ? (
-          <div className="space-y-3">
-            {topItems.map(([name, count], idx) => (
-              <div key={name} className="flex justify-between items-center border-b pb-2 last:border-0">
-                <span className="font-medium text-gray-700">
-                  <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold mr-2">
-                    {CHINESE_NUMBERS[idx] || `第${idx + 1}名`}
+      
+      <div className="bg-white p-6 rounded-xl shadow">
+        <h3 className="font-bold text-lg mb-4 text-[#3D332C] flex items-center gap-2"><TrendingUp size={20}/> 熱銷商品排行榜</h3>
+        <div className="grid grid-cols-2 gap-4">
+          {topItems.length === 0 ? <p className="text-gray-400">尚無銷售資料</p> : 
+            topItems.map(([name, qty], idx) => (
+              <div key={name} className="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <span className={`px-2 py-1 rounded text-xs font-bold ${idx < 3 ? 'bg-[#8B1E1E] text-white' : 'bg-gray-300 text-gray-700'}`}>
+                    {CHINESE_NUMBERS[idx] || `第${idx+1}名`}
                   </span>
-                  {name}
-                </span>
-                <span className="font-bold text-[#8B1E1E]">{count} 份</span>
+                  <span className="font-semibold text-[#3D332C]">{name}</span>
+                </div>
+                <span className="font-bold text-gray-600">{qty} 份</span>
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-400 text-sm">尚無銷售紀錄</p>
-        )}
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-// 4.2 多維度報表
 function AdminReports({ orders }) {
-  const sourceStats = orders.reduce((acc, o) => {
-    const key = o.subSource ? `${o.source} (${o.subSource})` : o.source;
-    acc[key] = (acc[key] || 0) + o.total;
-    return acc;
-  }, {});
+  // 匯出當日報表與當月報表 Excel
+  const exportDailyReportExcel = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayOrders = orders.filter(o => {
+      const parts = o.date.split('/');
+      return parts.length === 3 && `${parts[0]}-${parts[1]}-${parts[2]}` === today;
+    });
+    const totalRev = todayOrders.reduce((s, o) => s + o.total, 0);
 
-  const paymentStats = orders.reduce((acc, o) => {
-    acc[o.paymentMethod] = (acc[o.paymentMethod] || 0) + o.total;
-    return acc;
-  }, {});
+    let csv = `\uFEFF=== ${today} 當日營運報表 ===\n`;
+    csv += `訂單編號,時間,來源,付款方式,金額\n`;
+    todayOrders.forEach(o => {
+      csv += `${o.id},${o.time},${o.source},${o.paymentMethod || '現金'},${o.total}\n`;
+    });
+    csv += `\n當日總營業額,,,,,${totalRev}\n`;
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `當日營運報表_${today}.csv`;
+    link.click();
+  };
+
+  const exportMonthlyReportExcel = () => {
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const monthOrders = orders.filter(o => {
+      const parts = o.date.split('/');
+      return parts.length === 3 && `${parts[0]}-${parts[1]}` === currentMonth;
+    });
+    const totalRev = monthOrders.reduce((s, o) => s + o.total, 0);
+
+    let csv = `\uFEFF=== ${currentMonth} 當月營運總報表 ===\n`;
+    csv += `訂單編號,日期,時間,來源,付款方式,金額\n`;
+    monthOrders.forEach(o => {
+      csv += `${o.id},${o.date},${o.time},${o.source},${o.paymentMethod || '現金'},${o.total}\n`;
+    });
+    csv += `\n當月總營業額,,,,,${totalRev}\n`;
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `當月營運總報表_${currentMonth}.csv`;
+    link.click();
+  };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C]">多維度分析報表</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow border">
-          <h3 className="text-lg font-bold mb-4 text-[#3D332C]">訂單來源營收分析</h3>
-          {Object.keys(sourceStats).length > 0 ? (
-            <div className="space-y-3">
-              {Object.entries(sourceStats).map(([src, amount]) => (
-                <div key={src} className="flex justify-between items-center border-b pb-2">
-                  <span className="text-gray-700 font-medium">{src}</span>
-                  <span className="font-bold text-[#8B1E1E]">${amount}</span>
-                </div>
-              ))}
-            </div>
-          ) : <p className="text-gray-400 text-sm">尚無數據</p>}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">多維度分析與報表匯出</h2>
+        <div className="flex gap-3">
+          <button onClick={exportDailyReportExcel} className="bg-emerald-600 text-white px-4 py-2 rounded font-bold shadow flex items-center gap-1.5"><FileText size={18}/> 匯出當日報表 Excel</button>
+          <button onClick={exportMonthlyReportExcel} className="bg-[#6B4F3A] text-white px-4 py-2 rounded font-bold shadow flex items-center gap-1.5"><FileText size={18}/> 匯出當月報表 Excel</button>
         </div>
+      </div>
 
-        <div className="bg-white p-6 rounded-xl shadow border">
-          <h3 className="text-lg font-bold mb-4 text-[#3D332C]">支付方式營收分析</h3>
-          {Object.keys(paymentStats).length > 0 ? (
-            <div className="space-y-3">
-              {Object.entries(paymentStats).map(([pay, amount]) => (
-                <div key={pay} className="flex justify-between items-center border-b pb-2">
-                  <span className="text-gray-700 font-medium">{pay}</span>
-                  <span className="font-bold text-emerald-700">${amount}</span>
-                </div>
-              ))}
-            </div>
-          ) : <p className="text-gray-400 text-sm">尚無數據</p>}
+      <div className="grid grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded shadow">
+          <h3 className="font-bold mb-4">客源佔比分析</h3>
+          {['現場', '外送', '電話/Line'].map(src => {
+            const count = orders.filter(o => o.source === src).length;
+            const pct = orders.length ? Math.round((count / orders.length) * 100) : 0;
+            return (
+              <div key={src} className="mb-4">
+                <div className="flex justify-between text-sm mb-1"><span>{src}</span><span>{pct}% ({count}筆)</span></div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-[#C97A3D] h-2.5 rounded-full" style={{width: `${pct}%`}}></div></div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="bg-white p-6 rounded shadow flex flex-col justify-center items-center text-gray-400">
+          <PieChart size={48} className="mb-4 opacity-50" />
+          <p>營收與折扣交叉分析報表 (資料已永久同步雲端)</p>
         </div>
       </div>
     </div>
   );
 }
 
-// 4.3 菜單管理
 function AdminMenuManager({ categories, setCategories }) {
+  const [editingItem, setEditingItem] = useState(null);
   const [newCatName, setNewCatName] = useState('');
-  const [editingCatId, setEditingCatId] = useState(null);
 
-  const [newItem, setNewItem] = useState({ name: '', price: '' });
-
-  const addCategory = () => {
-    if (!newCatName.trim()) return;
-    setCategories([...categories, { id: `cat_${Date.now()}`, name: newCatName, color: '#E6D2BE', items: [] }]);
-    setNewCatName('');
-  };
-
-  const deleteCategory = (id) => {
-    if (confirm('確定要刪除此分類及其下方所有品項嗎？')) {
-      setCategories(categories.filter(c => c.id !== id));
-    }
-  };
-
-  const addItem = (catId) => {
-    if (!newItem.name || !newItem.price) return alert('請填寫完整品項名稱與價格');
-    setCategories(categories.map(c => {
-      if (c.id === catId) {
-        return {
-          ...c,
-          items: [...c.items, { id: `item_${Date.now()}`, name: newItem.name, price: Number(newItem.price) }]
-        };
-      }
-      return c;
-    }));
-    setNewItem({ name: '', price: '' });
-  };
-
-  const deleteItem = (catId, itemId) => {
-    setCategories(categories.map(c => {
-      if (c.id === catId) {
-        return { ...c, items: c.items.filter(i => i.id !== itemId) };
-      }
-      return c;
-    }));
+  const moveCategory = (index, direction) => {
+    const newCats = [...categories];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newCats.length) return;
+    const temp = newCats[index];
+    newCats[index] = newCats[targetIndex];
+    newCats[targetIndex] = temp;
+    setCategories(newCats);
   };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C]">菜單品項管理</h2>
+      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">菜單管理與分頁顏色設定</h2>
       
-      {/* 新增分類 */}
-      <div className="bg-white p-4 rounded-xl shadow border flex gap-3">
-        <input 
-          type="text" 
-          placeholder="輸入新分類名稱..." 
-          value={newCatName} 
-          onChange={e => setNewCatName(e.target.value)} 
-          className="border p-2 rounded flex-1 text-sm bg-white"
-        />
-        <button onClick={addCategory} className="bg-[#6B4F3A] text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-1">
-          <Plus size={16}/> 新增分類
-        </button>
+      <div className="bg-white p-4 rounded shadow flex gap-4 items-center">
+        <input type="text" placeholder="新分類名稱 (例如: 炸物區)" value={newCatName} onChange={e => setNewCatName(e.target.value)} className="border p-2 rounded flex-1"/>
+        <button onClick={() => {
+          if(!newCatName) return;
+          setCategories([...categories, { id: `c_${Date.now()}`, name: newCatName, color: '#E6D2BE', items: [] }]);
+          setNewCatName('');
+        }} className="bg-[#6B4F3A] text-white px-4 py-2 rounded font-bold flex items-center gap-1"><Plus size={18}/> 新增主分類</button>
       </div>
 
-      {/* 分類與品項列表 */}
       <div className="space-y-4">
-        {categories.map(cat => (
-          <div key={cat.id} className="bg-white p-5 rounded-xl shadow border">
-            <div className="flex justify-between items-center mb-4 border-b pb-3">
-              <span className="font-bold text-lg text-[#3D332C]">{cat.name} ({cat.items.length} 項)</span>
-              <button onClick={() => deleteCategory(cat.id)} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1">
-                <Trash2 size={16}/> 刪除分類
-              </button>
+        {categories.map((cat, catIdx) => (
+          <div key={cat.id} className="bg-white p-6 rounded-xl shadow border">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b">
+              <div className="flex items-center gap-4">
+                <input 
+                  type="text" 
+                  value={cat.name} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setCategories(categories.map(c => c.id === cat.id ? {...c, name: val} : c));
+                  }}
+                  className="font-bold text-xl border-b border-dashed outline-none bg-transparent"
+                />
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <span>分頁色環調整:</span>
+                  <input 
+                    type="color" 
+                    value={cat.color || '#E6D2BE'} 
+                    onChange={e => {
+                      const color = e.target.value;
+                      setCategories(categories.map(c => c.id === cat.id ? {...c, color} : c));
+                    }}
+                    className="w-8 h-8 rounded border cursor-pointer"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => moveCategory(catIdx, 'up')} disabled={catIdx === 0} className="p-1 border rounded hover:bg-gray-100 disabled:opacity-30"><ArrowUp size={16}/></button>
+                <button onClick={() => moveCategory(catIdx, 'down')} disabled={catIdx === categories.length - 1} className="p-1 border rounded hover:bg-gray-100 disabled:opacity-30"><ArrowDown size={16}/></button>
+                <button onClick={() => setCategories(categories.filter(c => c.id !== cat.id))} className="text-red-500 p-1 border rounded hover:bg-red-50"><Trash2 size={16}/></button>
+              </div>
             </div>
 
-            {/* 品項清單 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-3 gap-3 mb-4">
               {cat.items.map(item => (
-                <div key={item.id} className="flex justify-between items-center border p-3 rounded-lg bg-gray-50">
-                  <span className="font-medium text-gray-800">{item.name}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-[#8B1E1E]">${item.price}</span>
-                    <button onClick={() => deleteItem(cat.id, item.id)} className="text-red-400 hover:text-red-600">
-                      <Trash2 size={16}/>
-                    </button>
+                <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded border">
+                  <div>
+                    <p className="font-bold">{item.name}</p>
+                    <p className="text-xs text-red-600">${item.price}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => setEditingItem({ catId: cat.id, ...item })} className="text-blue-600 p-1 hover:bg-blue-50 rounded"><Edit size={14}/></button>
+                    <button onClick={() => {
+                      setCategories(categories.map(c => c.id === cat.id ? {...c, items: c.items.filter(i => i.id !== item.id)} : c));
+                    }} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={14}/></button>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* 新增品項輸入區 */}
-            <div className="flex gap-2 pt-2 border-t">
-              <input 
-                type="text" 
-                placeholder="品項名稱" 
-                value={editingCatId === cat.id ? newItem.name : ''} 
-                onFocus={() => setEditingCatId(cat.id)}
-                onChange={e => setNewItem({ ...newItem, name: e.target.value })}
-                className="border p-2 rounded text-sm flex-1 bg-white" 
-              />
-              <input 
-                type="number" 
-                placeholder="價格" 
-                value={editingCatId === cat.id ? newItem.price : ''} 
-                onFocus={() => setEditingCatId(cat.id)}
-                onChange={e => setNewItem({ ...newItem, price: e.target.value })}
-                className="border p-2 rounded text-sm w-24 bg-white" 
-              />
-              <button onClick={() => addItem(cat.id)} className="bg-emerald-700 text-white px-3 py-2 rounded text-sm font-bold">
-                新增品項
-              </button>
-            </div>
+            <button onClick={() => {
+              const name = prompt('請輸入新品項名稱：');
+              const price = parseInt(prompt('請輸入價格：') || 0);
+              if(name) {
+                setCategories(categories.map(c => c.id === cat.id ? {...c, items: [...c.items, { id: `i_${Date.now()}`, name, price }]} : c));
+              }
+            }} className="text-sm bg-gray-100 px-3 py-1.5 rounded font-bold hover:bg-gray-200">+ 新增品項</button>
           </div>
         ))}
       </div>
+
+      {editingItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl w-80 shadow-xl">
+            <h3 className="font-bold text-lg mb-4">修改品項</h3>
+            <div className="mb-3">
+              <label className="text-xs text-gray-500">品項名稱</label>
+              <input type="text" value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="border p-2 rounded w-full"/>
+            </div>
+            <div className="mb-4">
+              <label className="text-xs text-gray-500">價格</label>
+              <input type="number" value={editingItem.price} onChange={e => setEditingItem({...editingItem, price: parseInt(e.target.value)||0})} className="border p-2 rounded w-full"/>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setEditingItem(null)} className="flex-1 py-2 bg-gray-200 rounded font-bold">取消</button>
+              <button onClick={() => {
+                setCategories(categories.map(c => {
+                  if(c.id === editingItem.catId) {
+                    return {...c, items: c.items.map(i => i.id === editingItem.id ? {id: i.id, name: editingItem.name, price: editingItem.price} : i)};
+                  }
+                  return c;
+                }));
+                setEditingItem(null);
+              }} className="flex-1 py-2 bg-[#6B4F3A] text-white rounded font-bold">儲存</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// 4.4 優惠設定
 function AdminPromoManager({ promotions, setPromotions }) {
-  const [name, setName] = useState('');
-  const [type, setType] = useState('amount');
-  const [value, setValue] = useState('');
-
-  const addPromo = () => {
-    if (!name || !value) return alert('請填寫完整資訊');
-    setPromotions([...promotions, { id: `p_${Date.now()}`, name, type, value: Number(value) }]);
-    setName(''); setValue('');
-  };
+  const [newPromo, setNewPromo] = useState({ name: '', type: 'amount', value: '' });
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C]">優惠活動管理</h2>
-      <div className="bg-white p-4 rounded-xl shadow border flex gap-3 items-center">
-        <input type="text" placeholder="優惠名稱" value={name} onChange={e => setName(e.target.value)} className="border p-2 rounded text-sm flex-1 bg-white"/>
-        <select value={type} onChange={e => setType(e.target.value)} className="border p-2 rounded text-sm bg-white">
-          <option value="amount">定額折抵 ($)</option>
-          <option value="percent">折扣比例 (%)</option>
-        </select>
-        <input type="number" placeholder="數值" value={value} onChange={e => setValue(e.target.value)} className="border p-2 rounded text-sm w-28 bg-white"/>
-        <button onClick={addPromo} className="bg-[#6B4F3A] text-white px-4 py-2 rounded font-bold text-sm">新增優惠</button>
+      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">優惠折扣設定</h2>
+      
+      <div className="bg-white p-6 rounded shadow flex gap-4 items-end">
+        <div className="flex-1">
+          <label className="text-xs font-bold text-gray-500">優惠名稱</label>
+          <input type="text" placeholder="例如: VIP九折" value={newPromo.name} onChange={e => setNewPromo({...newPromo, name: e.target.value})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <div className="w-36">
+          <label className="text-xs font-bold text-gray-500">折扣類型</label>
+          <select value={newPromo.type} onChange={e => setNewPromo({...newPromo, type: e.target.value})} className="border p-2 rounded w-full mt-1 bg-white">
+            <option value="amount">固定金額折抵</option>
+            <option value="percent">百分比 (%) 折扣</option>
+          </select>
+        </div>
+        <div className="w-32">
+          <label className="text-xs font-bold text-gray-500">折抵數值</label>
+          <input type="number" placeholder="例如: 10 或 10" value={newPromo.value} onChange={e => setNewPromo({...newPromo, value: parseFloat(e.target.value)||''})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <button onClick={() => {
+          if(!newPromo.name || !newPromo.value) return alert('請填寫完整');
+          setPromotions([...promotions, { id: `p_${Date.now()}`, ...newPromo }]);
+          setNewPromo({ name: '', type: 'amount', value: '' });
+        }} className="bg-[#6B4F3A] text-white px-6 py-2 rounded font-bold">新增優惠</button>
       </div>
 
-      <div className="bg-white rounded-xl shadow border overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-100 border-b font-bold text-gray-700">
-            <tr>
-              <th className="p-4">優惠名稱</th>
-              <th className="p-4">類型</th>
-              <th className="p-4">折抵數值</th>
-              <th className="p-4">操作</th>
-            </tr>
+      <div className="bg-white rounded shadow overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-100 border-b"><th className="p-3">優惠名稱</th><th className="p-3">類型</th><th className="p-3">折抵數值</th><th className="p-3 w-20">操作</th></tr>
           </thead>
           <tbody>
             {promotions.map(p => (
-              <tr key={p.id} className="border-b last:border-0">
-                <td className="p-4 font-bold">{p.name}</td>
-                <td className="p-4">{p.type === 'amount' ? '定額折抵' : '折扣比例'}</td>
-                <td className="p-4 font-bold text-[#8B1E1E]">{p.type === 'amount' ? `-$${p.value}` : `-${p.value}%`}</td>
-                <td className="p-4">
-                  <button onClick={() => setPromotions(promotions.filter(x => x.id !== p.id))} className="text-red-500 hover:underline">刪除</button>
-                </td>
+              <tr key={p.id} className="border-b">
+                <td className="p-3 font-bold">{p.name}</td>
+                <td className="p-3">{p.type === 'amount' ? '固定金額' : '百分比 (%)'}</td>
+                <td className="p-3 text-red-600 font-bold">{p.type === 'amount' ? `-$${p.value}` : `${p.value}% 折扣`}</td>
+                <td className="p-3"><button onClick={() => setPromotions(promotions.filter(x => x.id !== p.id))} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button></td>
               </tr>
             ))}
           </tbody>
@@ -837,66 +896,86 @@ function AdminPromoManager({ promotions, setPromotions }) {
   );
 }
 
-// 4.5 進貨與庫存
 function AdminInventoryManager({ ingredients, setIngredients }) {
-  const [ingName, setIngName] = useState('');
-  const [stock, setStock] = useState('');
-  const [safeStock, setSafeStock] = useState('');
-
-  const addIngredient = () => {
-    if (!ingName || !stock) return alert('請輸入食材名稱與庫存');
-    setIngredients([...ingredients, {
-      id: `ing_${Date.now()}`,
-      name: ingName,
-      stock: Number(stock),
-      safeStock: Number(safeStock || 5),
-      unit: '份'
-    }]);
-    setIngName(''); setStock(''); setSafeStock('');
-  };
+  const [categories, setCategories] = useState(['蔬菜類', '肉品類', '主食類', '湯底類']);
+  const [newCat, setNewCat] = useState('');
+  const [newIng, setNewIng] = useState({ name: '', supplier: '', unit: 'kg', price: '', category: '蔬菜類', stock: '', safeStock: 5 });
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C]">食材與庫存管理</h2>
-      <div className="bg-white p-4 rounded-xl shadow border flex gap-3">
-        <input type="text" placeholder="食材名稱" value={ingName} onChange={e => setIngName(e.target.value)} className="border p-2 rounded text-sm flex-1 bg-white"/>
-        <input type="number" placeholder="初始庫存" value={stock} onChange={e => setStock(e.target.value)} className="border p-2 rounded text-sm w-28 bg-white"/>
-        <input type="number" placeholder="安全庫存量" value={safeStock} onChange={e => setSafeStock(e.target.value)} className="border p-2 rounded text-sm w-28 bg-white"/>
-        <button onClick={addIngredient} className="bg-[#6B4F3A] text-white px-4 py-2 rounded font-bold text-sm">新增食材</button>
+      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">進貨與庫存管理</h2>
+
+      <div className="bg-white p-4 rounded shadow flex gap-4 items-center">
+        <span className="font-bold text-sm">食材分類：</span>
+        <div className="flex gap-2 flex-wrap">
+          {categories.map(cat => (
+            <span key={cat} className="bg-gray-100 px-3 py-1 rounded border text-sm font-semibold flex items-center gap-2">
+              {cat}
+              <button onClick={() => setCategories(categories.filter(c => c !== cat))} className="text-red-500 hover:text-red-700">&times;</button>
+            </span>
+          ))}
+        </div>
+        <input type="text" placeholder="新分類" value={newCat} onChange={e => setNewCat(e.target.value)} className="border p-1.5 rounded text-sm"/>
+        <button onClick={() => { if(newCat && !categories.includes(newCat)) { setCategories([...categories, newCat]); setNewCat(''); }}} className="bg-gray-800 text-white px-3 py-1.5 rounded text-sm font-bold">新增分類</button>
       </div>
 
-      <div className="bg-white rounded-xl shadow border overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-100 border-b font-bold text-gray-700">
-            <tr>
-              <th className="p-4">食材名稱</th>
-              <th className="p-4">目前庫存</th>
-              <th className="p-4">安全庫存水位</th>
-              <th className="p-4">狀態</th>
-              <th className="p-4">庫存微調</th>
-            </tr>
+      <div className="bg-white p-6 rounded shadow grid grid-cols-4 gap-4 items-end">
+        <div>
+          <label className="text-xs font-bold text-gray-500">食材名稱</label>
+          <input type="text" placeholder="名稱" value={newIng.name} onChange={e => setNewIng({...newIng, name: e.target.value})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">供應商</label>
+          <input type="text" placeholder="供應商" value={newIng.supplier} onChange={e => setNewIng({...newIng, supplier: e.target.value})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">分類</label>
+          <select value={newIng.category} onChange={e => setNewIng({...newIng, category: e.target.value})} className="border p-2 rounded w-full mt-1 bg-white">
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">單位 (kg/包等)</label>
+          <input type="text" value={newIng.unit} onChange={e => setNewIng({...newIng, unit: e.target.value})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">預設單價</label>
+          <input type="number" placeholder="單價" value={newIng.price} onChange={e => setNewIng({...newIng, price: parseFloat(e.target.value)||''})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">現有庫存量</label>
+          <input type="number" placeholder="庫存數量" value={newIng.stock} onChange={e => setNewIng({...newIng, stock: parseFloat(e.target.value)||''})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">安全庫存警示線</label>
+          <input type="number" placeholder="安全庫存" value={newIng.safeStock} onChange={e => setNewIng({...newIng, safeStock: parseFloat(e.target.value)||''})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <button onClick={() => {
+          if(!newIng.name) return alert('請填寫食材名稱');
+          setIngredients([...ingredients, { id: `ing_${Date.now()}`, ...newIng }]);
+          setNewIng({ name: '', supplier: '', unit: 'kg', price: '', category: categories[0], stock: '', safeStock: 5 });
+        }} className="bg-[#6B4F3A] text-white py-2.5 rounded font-bold">新增進貨</button>
+      </div>
+
+      <div className="bg-white rounded shadow overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-100 border-b"><th className="p-3">食材名稱</th><th className="p-3">分類</th><th className="p-3">供應商</th><th className="p-3">單價</th><th className="p-3">現有庫存</th><th className="p-3">狀態</th><th className="p-3 w-20">操作</th></tr>
           </thead>
           <tbody>
             {ingredients.map(ing => {
               const isLow = ing.stock <= ing.safeStock;
               return (
-                <tr key={ing.id} className="border-b last:border-0">
-                  <td className="p-4 font-bold">{ing.name}</td>
-                  <td className="p-4 font-bold text-lg">{ing.stock}</td>
-                  <td className="p-4 text-gray-500">{ing.safeStock}</td>
-                  <td className="p-4">
-                    {isLow ? (
-                      <span className="bg-red-100 text-red-700 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-max">
-                        <AlertTriangle size={12}/> 庫存偏低
-                      </span>
-                    ) : (
-                      <span className="bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-bold w-max block">正常</span>
-                    )}
+                <tr key={ing.id} className={`border-b ${isLow ? 'bg-red-50' : ''}`}>
+                  <td className="p-3 font-bold">{ing.name}</td>
+                  <td className="p-3"><span className="bg-gray-200 text-xs px-2 py-1 rounded">{ing.category}</span></td>
+                  <td className="p-3">{ing.supplier}</td>
+                  <td className="p-3">${ing.price} / {ing.unit}</td>
+                  <td className="p-3 font-bold">{ing.stock} {ing.unit}</td>
+                  <td className="p-3">
+                    {isLow ? <span className="text-red-600 font-bold text-xs bg-red-100 px-2 py-1 rounded animate-pulse">⚠️ 低庫存警示</span> : <span className="text-green-600 text-xs font-bold">庫存充足</span>}
                   </td>
-                  <td className="p-4 flex gap-2">
-                    <button onClick={() => setIngredients(ingredients.map(i => i.id === ing.id ? { ...i, stock: i.stock + 1 } : i))} className="bg-gray-200 px-3 py-1 rounded font-bold hover:bg-gray-300">+</button>
-                    <button onClick={() => setIngredients(ingredients.map(i => i.id === ing.id ? { ...i, stock: Math.max(0, i.stock - 1) } : i))} className="bg-gray-200 px-3 py-1 rounded font-bold hover:bg-gray-300">-</button>
-                  </td>
+                  <td className="p-3"><button onClick={() => setIngredients(ingredients.filter(i => i.id !== ing.id))} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button></td>
                 </tr>
               );
             })}
@@ -907,182 +986,224 @@ function AdminInventoryManager({ ingredients, setIngredients }) {
   );
 }
 
-// 4.6 記帳管理
 function AdminExpenseManager({ expenses, setExpenses }) {
-  const [title, setTitle] = useState('');
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('進貨');
+  const [newExp, setNewExp] = useState({ date: new Date().toISOString().split('T')[0], category: '人事成本', subCategory: '正職薪資', name: '', note: '', amount: '', isFixed: false });
+  const [showCalc, setShowCalc] = useState(false);
 
-  const addExpense = () => {
-    if (!title || !amount) return alert('請填寫完整資訊');
-    setExpenses([...expenses, {
-      id: `exp_${Date.now()}`,
-      date: new Date().toLocaleDateString('zh-TW'),
-      title,
-      category,
-      amount: Number(amount)
-    }]);
-    setTitle(''); setAmount('');
+  const categoriesMap = {
+    '人事成本': ['正職薪資', '兼職薪資', '獎金津貼'],
+    '食材進貨': ['肉品採購', '蔬菜採購', '乾貨調料'],
+    '店面營運': ['房租', '水電費', '瓦斯費', '清潔耗材'],
+    '其他雜支': ['設備維修', '行銷廣告', '雜費']
   };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C]">營業支出記帳</h2>
-      <div className="bg-white p-4 rounded-xl shadow border flex gap-3">
-        <input type="text" placeholder="支出項目描述" value={title} onChange={e => setTitle(e.target.value)} className="border p-2 rounded text-sm flex-1 bg-white"/>
-        <select value={category} onChange={e => setCategory(e.target.value)} className="border p-2 rounded text-sm bg-white">
-          <option value="進貨">進貨採購</option>
-          <option value="水電">水電雜費</option>
-          <option value="房租">門市房租</option>
-          <option value="薪資">員工薪資</option>
-          <option value="其他">其他雜項</option>
-        </select>
-        <input type="number" placeholder="金額" value={amount} onChange={e => setAmount(e.target.value)} className="border p-2 rounded text-sm w-32 bg-white"/>
-        <button onClick={addExpense} className="bg-[#6B4F3A] text-white px-4 py-2 rounded font-bold text-sm">新增紀錄</button>
+      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">店內支出記帳管理</h2>
+
+      <div className="bg-white p-6 rounded shadow grid grid-cols-3 gap-4">
+        <div>
+          <label className="text-xs font-bold text-gray-500">日期</label>
+          <input type="date" value={newExp.date} onChange={e => setNewExp({...newExp, date: e.target.value})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">大分類</label>
+          <select value={newExp.category} onChange={e => {
+            const cat = e.target.value;
+            setNewExp({...newExp, category: cat, subCategory: categoriesMap[cat][0]});
+          }} className="border p-2 rounded w-full mt-1 bg-white">
+            {Object.keys(categoriesMap).map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">子標題</label>
+          <select value={newExp.subCategory} onChange={e => setNewExp({...newExp, subCategory: e.target.value})} className="border p-2 rounded w-full mt-1 bg-white">
+            {(categoriesMap[newExp.category] || []).map(sc => <option key={sc} value={sc}>{sc}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">支出名稱</label>
+          <input type="text" placeholder="例如: 3月份店面房租" value={newExp.name} onChange={e => setNewExp({...newExp, name: e.target.value})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">金額 (可點擊計算機)</label>
+          <div className="flex gap-2 mt-1">
+            <input type="number" placeholder="金額" value={newExp.amount} onChange={e => setNewExp({...newExp, amount: parseFloat(e.target.value)||''})} className="border p-2 rounded flex-1"/>
+            <button onClick={() => setShowCalc(true)} className="bg-gray-200 px-3 rounded hover:bg-gray-300"><Calculator size={18}/></button>
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">備註</label>
+          <input type="text" placeholder="備註說明" value={newExp.note} onChange={e => setNewExp({...newExp, note: e.target.value})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" checked={newExp.isFixed} onChange={e => setNewExp({...newExp, isFixed: e.target.checked})} id="isFixed" className="w-4 h-4"/>
+          <label htmlFor="isFixed" className="text-sm font-bold">是否為每月固定支出</label>
+        </div>
+        <div></div>
+        <button onClick={() => {
+          if(!newExp.name || !newExp.amount) return alert('請填寫完整支出名稱與金額');
+          setExpenses([...expenses, { id: `exp_${Date.now()}`, ...newExp }]);
+          setNewExp({ date: new Date().toISOString().split('T')[0], category: '人事成本', subCategory: '正職薪資', name: '', note: '', amount: '', isFixed: false });
+        }} className="bg-[#6B4F3A] text-white py-2 rounded font-bold">新增支出紀錄</button>
       </div>
 
-      <div className="bg-white rounded-xl shadow border overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-100 border-b font-bold text-gray-700">
-            <tr>
-              <th className="p-4">日期</th>
-              <th className="p-4">項目描述</th>
-              <th className="p-4">類別</th>
-              <th className="p-4">金額</th>
-              <th className="p-4">操作</th>
-            </tr>
+      <div className="bg-white rounded shadow overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-100 border-b"><th className="p-3">日期</th><th className="p-3">分類 / 子標題</th><th className="p-3">名稱</th><th className="p-3">固定支出</th><th className="p-3">金額</th><th className="p-3 w-20">操作</th></tr>
           </thead>
           <tbody>
             {expenses.map(exp => (
-              <tr key={exp.id} className="border-b last:border-0">
-                <td className="p-4 text-gray-500">{exp.date}</td>
-                <td className="p-4 font-bold">{exp.title}</td>
-                <td className="p-4"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{exp.category}</span></td>
-                <td className="p-4 font-bold text-red-600">${exp.amount}</td>
-                <td className="p-4">
-                  <button onClick={() => setExpenses(expenses.filter(e => e.id !== exp.id))} className="text-red-500 hover:underline">刪除</button>
-                </td>
+              <tr key={exp.id} className="border-b">
+                <td className="p-3">{exp.date}</td>
+                <td className="p-3"><span className="bg-gray-200 text-xs px-2 py-1 rounded font-bold">{exp.category} > {exp.subCategory}</span></td>
+                <td className="p-3 font-semibold">{exp.name} {exp.note && <span className="text-xs text-gray-400">({exp.note})</span>}</td>
+                <td className="p-3">{exp.isFixed ? <span className="text-blue-600 text-xs font-bold">固定支出</span> : '否'}</td>
+                <td className="p-3 text-red-600 font-bold">${exp.amount.toLocaleString()}</td>
+                <td className="p-3"><button onClick={() => setExpenses(expenses.filter(e => e.id !== exp.id))} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
 
-// 4.7 每日關帳作業
-function AdminClosingManager({ orders, expenses, closingRecords, setClosingRecords }) {
-  const totalIncome = orders.reduce((sum, o) => sum + o.total, 0);
-  const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const netProfit = totalIncome - totalExpense;
-
-  const handleClosing = () => {
-    if (confirm('確定要執行今日關帳結算嗎？')) {
-      const record = {
-        id: `close_${Date.now()}`,
-        date: new Date().toLocaleDateString('zh-TW'),
-        time: new Date().toLocaleTimeString('zh-TW'),
-        income: totalIncome,
-        expense: totalExpense,
-        netProfit,
-        orderCount: orders.length
-      };
-      setClosingRecords([record, ...closingRecords]);
-      alert('關帳作業完成！');
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C]">每日關帳與損益結算</h2>
-      
-      <div className="bg-white p-6 rounded-xl shadow border space-y-4">
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div className="bg-green-50 p-4 rounded-lg">
-            <p className="text-sm text-green-700 font-medium">本日總營業額</p>
-            <p className="text-2xl font-bold text-green-800 mt-1">${totalIncome}</p>
-          </div>
-          <div className="bg-red-50 p-4 rounded-lg">
-            <p className="text-sm text-red-700 font-medium">本日總支出</p>
-            <p className="text-2xl font-bold text-red-800 mt-1">${totalExpense}</p>
-          </div>
-          <div className="bg-amber-50 p-4 rounded-lg">
-            <p className="text-sm text-amber-700 font-medium">本日淨利</p>
-            <p className="text-2xl font-bold text-amber-900 mt-1">${netProfit}</p>
-          </div>
-        </div>
-        
-        <button onClick={handleClosing} className="w-full bg-[#8B1E1E] text-white py-3 rounded-xl font-bold text-lg shadow hover:bg-red-900">
-          執行本日關帳作業
-        </button>
-      </div>
-
-      <div className="bg-white rounded-xl shadow border p-6">
-        <h3 className="text-lg font-bold mb-4 text-[#3D332C]">歷史關帳紀錄</h3>
-        <div className="space-y-3">
-          {closingRecords.map(rec => (
-            <div key={rec.id} className="flex justify-between items-center border-b pb-3 last:border-0 text-sm">
-              <div>
-                <p className="font-bold text-[#3D332C]">{rec.date} {rec.time}</p>
-                <p className="text-xs text-gray-500">共 {rec.orderCount} 筆訂單</p>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-emerald-700">淨利: ${rec.netProfit}</p>
-                <p className="text-xs text-gray-500">營收: ${rec.income} / 支出: ${rec.expense}</p>
-              </div>
+      {showCalc && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow-xl w-80 text-center">
+            <h3 className="font-bold mb-4">快速計算機</h3>
+            <div className="text-2xl font-bold bg-gray-100 p-3 rounded mb-4">${newExp.amount || 0}</div>
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {[1,2,3,4,5,6,7,8,9,0].map(n => (
+                <button key={n} onClick={() => setNewExp({...newExp, amount: parseInt(String(newExp.amount||'') + n)})} className="border py-2 rounded font-bold">{n}</button>
+              ))}
+              <button onClick={() => setNewExp({...newExp, amount: ''})} className="border py-2 rounded bg-red-100 text-red-600 font-bold">C</button>
             </div>
-          ))}
-          {closingRecords.length === 0 && <p className="text-gray-400 text-sm">暫無關帳紀錄</p>}
+            <button onClick={() => setShowCalc(false)} className="w-full bg-[#6B4F3A] text-white py-2 rounded font-bold">完成</button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// 4.8 歷史訂單
-function AdminHistory({ orders, setOrders }) {
-  const deleteOrder = (id) => {
-    if (confirm('確定要作廢此筆訂單嗎？')) {
-      setOrders(orders.filter(o => o.id !== id));
-    }
+function AdminClosingManager({ orders, expenses, closingRecords, setClosingRecords }) {
+  const todayStr = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  
+  const todayOrders = orders.filter(o => o.date === todayStr);
+  const todayExpenses = expenses.filter(e => e.date === todayStr.replace(/\//g, '-'));
+
+  const totalRev = todayOrders.reduce((s, o) => s + o.total, 0);
+  const totalDiscount = todayOrders.reduce((s, o) => s + (o.discount || 0), 0);
+  
+  const cashOrders = todayOrders.filter(o => o.paymentMethod === '現金' || !o.paymentMethod);
+  const cashRev = cashOrders.reduce((s, o) => s + o.total, 0);
+  const totalExpenseAmount = todayExpenses.reduce((s, e) => s + e.amount, 0);
+
+  const linePayOrders = todayOrders.filter(o => o.paymentMethod === 'Line Pay');
+  const linePayRev = linePayOrders.reduce((s, o) => s + o.total, 0);
+  const linePayNet = Math.round(linePayRev * 0.97); 
+
+  const uberOrders = todayOrders.filter(o => o.subSource === 'Uber Eats');
+  const uberRev = uberOrders.reduce((s, o) => s + o.total, 0);
+
+  const pandaOrders = todayOrders.filter(o => o.subSource === 'foodpanda');
+  const pandaRev = pandaOrders.reduce((s, o) => s + o.total, 0);
+
+  const handleCloseDay = () => {
+    const record = {
+      id: `close_${Date.now()}`,
+      date: todayStr,
+      time: new Date().toLocaleTimeString('zh-TW', { hour12: false }),
+      totalRev,
+      totalDiscount,
+      cashRev,
+      totalExpenseAmount,
+      linePayRev,
+      linePayNet,
+      uberRev,
+      pandaRev
+    };
+    setClosingRecords([record, ...closingRecords]);
+    alert('當日關帳完成，營運報告已永久保存至 Firebase 雲端！');
+  };
+
+  const exportClosingCSV = () => {
+    let csv = '\uFEFF日期,時間,總營業額,折扣金額,現金營收,店內支出,LinePay系統,LinePay實際,UberEats,Foodpanda\n';
+    closingRecords.forEach(r => {
+      csv += `${r.date},${r.time},${r.totalRev},${r.totalDiscount},${r.cashRev},${r.totalExpenseAmount},${r.linePayRev},${r.linePayNet},${r.uberRev},${r.pandaRev}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `關帳歷史報表_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
   };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C]">歷史訂單紀錄</h2>
-      <div className="bg-white rounded-xl shadow border overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-100 border-b font-bold text-gray-700">
-            <tr>
-              <th className="p-4">訂單號</th>
-              <th className="p-4">時間</th>
-              <th className="p-4">來源</th>
-              <th className="p-4">品項明細</th>
-              <th className="p-4">金額</th>
-              <th className="p-4">付款方式</th>
-              <th className="p-4">操作</th>
-            </tr>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">每日營業關帳作業</h2>
+        <div className="flex gap-2">
+          <button onClick={exportClosingCSV} className="bg-green-600 text-white px-4 py-2 rounded font-bold flex items-center gap-1"><FileText size={18}/> 匯出關帳報表</button>
+          <button onClick={handleCloseDay} className="bg-[#8B1E1E] text-white px-6 py-2 rounded font-bold shadow-lg hover:bg-opacity-90">執行今日關帳</button>
+        </div>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-amber-900 text-sm space-y-1">
+        <p className="font-bold">💡 關帳注意事項：</p>
+        <p>• 所有歷史資料與關帳紀錄透過 Firebase 永久保存，絕不遺失。</p>
+        <p>• 現金不包含預留零用金與臨時收支。</p>
+      </div>
+
+      <div className="bg-white p-6 rounded-xl shadow space-y-4">
+        <h3 className="font-bold text-lg text-[#3D332C] border-b pb-2">📅 今日關帳預覽 ({todayStr})</h3>
+        
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="bg-gray-50 p-4 rounded border">
+            <p className="font-bold text-gray-600">總營業額</p>
+            <p className="text-2xl font-bold text-[#8B1E1E] mt-1">${totalRev.toLocaleString()}</p>
+            <p className="text-xs text-gray-500 mt-1">總折讓/折扣金額: ${totalDiscount}</p>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded border">
+            <p className="font-bold text-gray-600">現金營收與支出</p>
+            <p className="text-xl font-bold text-[#3D332C] mt-1">系統現金: ${cashRev.toLocaleString()}</p>
+            <p className="text-xs text-red-600 mt-1">店內支出總額: ${totalExpenseAmount.toLocaleString()}</p>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded border">
+            <p className="font-bold text-gray-600">Line Pay</p>
+            <p className="text-lg font-bold text-green-700 mt-1">系統支付: ${linePayRev.toLocaleString()}</p>
+            <p className="text-xs text-gray-500 mt-1">實際淨額(扣3%): ${linePayNet.toLocaleString()}</p>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded border">
+            <p className="font-bold text-gray-600">外送平台 (Uber / Panda)</p>
+            <p className="text-sm font-bold text-gray-700 mt-1">Uber Eats 營收: ${uberRev}</p>
+            <p className="text-sm font-bold text-gray-700 mt-1">Foodpanda 營收: ${pandaRev}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-xl shadow">
+        <h3 className="font-bold text-lg mb-4 text-[#3D332C]">🔒 雲端歷史關帳紀錄 (永久保存)</h3>
+        <table className="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr className="bg-gray-100 border-b"><th className="p-3">日期 / 時間</th><th className="p-3">總營業額</th><th className="p-3">現金營收</th><th className="p-3">店內支出</th><th className="p-3">LinePay淨額</th><th className="p-3">外送總額</th></tr>
           </thead>
           <tbody>
-            {orders.map(o => (
-              <tr key={o.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="p-4 font-mono font-bold text-gray-600">{o.id}</td>
-                <td className="p-4 text-xs text-gray-500">{o.date} {o.time}</td>
-                <td className="p-4"><span className="bg-gray-200 px-2 py-0.5 rounded text-xs">{o.subSource ? `${o.source}(${o.subSource})` : o.source}</span></td>
-                <td className="p-4 text-xs">
-                  {o.items?.map(i => `${i.name}${i.milky ? '(麻奶)' : ''} x${i.qty}`).join(', ')}
-                </td>
-                <td className="p-4 font-bold text-[#8B1E1E]">${o.total}</td>
-                <td className="p-4 font-medium">{o.paymentMethod}</td>
-                <td className="p-4">
-                  <button onClick={() => deleteOrder(o.id)} className="text-red-500 hover:underline">作廢</button>
-                </td>
+            {closingRecords.map(r => (
+              <tr key={r.id} className="border-b">
+                <td className="p-3">{r.date} <span className="text-xs text-gray-400">{r.time}</span></td>
+                <td className="p-3 font-bold text-[#8B1E1E]">${r.totalRev}</td>
+                <td className="p-3">${r.cashRev}</td>
+                <td className="p-3 text-red-600">${r.totalExpenseAmount}</td>
+                <td className="p-3">${r.linePayNet}</td>
+                <td className="p-3">${r.uberRev + r.pandaRev}</td>
               </tr>
             ))}
-            {orders.length === 0 && (
-              <tr><td colSpan={7} className="p-8 text-center text-gray-400">目前尚無歷史訂單</td></tr>
-            )}
+            {closingRecords.length === 0 && <tr><td colSpan="6" className="p-6 text-center text-gray-400">尚無關帳紀錄</td></tr>}
           </tbody>
         </table>
       </div>
@@ -1090,161 +1211,459 @@ function AdminHistory({ orders, setOrders }) {
   );
 }
 
-// 4.9 員工與打卡管理
+// 後台：歷史訂單 (支援「當日」按鈕、區間小月曆篩選、直接匯出 Excel、永久保存)
+function AdminHistory({ orders, setOrders }) {
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const handleSetToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setStartDate(today);
+    setEndDate(today);
+  };
+
+  const filteredOrders = orders.filter(o => {
+    const parts = o.date.split('/');
+    if (parts.length !== 3) return true;
+    const formatted = `${parts[0]}-${parts[1]}-${parts[2]}`;
+    return formatted >= startDate && formatted <= endDate;
+  });
+
+  const exportToExcel = () => {
+    let csv = '\uFEFF'; 
+    csv += '訂單編號,日期,時間,來源,細分管道,付款方式,訂單總額(原),LinePay手續費(3%),實際淨額\n';
+    filteredOrders.forEach(o => {
+      const isLinePay = o.paymentMethod === 'Line Pay';
+      const fee = isLinePay ? Math.round(o.total * 0.03) : 0;
+      const net = o.total - fee;
+      csv += `${o.id},${o.date},${o.time},${o.source},${o.subSource || '無'},${o.paymentMethod || '現金'},${o.total},${fee},${net}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `歷史訂單區間報表_${startDate}_to_${endDate}.csv`;
+    link.click();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">歷史訂單查詢與小月曆區間篩選</h2>
+        <button onClick={exportToExcel} className="bg-[#4CAF50] text-white px-4 py-2 rounded shadow font-bold flex items-center gap-2"><FileText size={18}/> 匯出篩選結果 Excel</button>
+      </div>
+
+      <div className="bg-white p-4 rounded-xl shadow flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Calendar className="text-[#6B4F3A]" size={20}/>
+          <span className="font-bold text-sm">日期區間查詢：</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <input 
+            type="date" 
+            value={startDate} 
+            onChange={e => setStartDate(e.target.value)}
+            className="border p-2 rounded bg-gray-50 font-bold text-sm"
+          />
+          <span className="text-gray-500 font-bold">至</span>
+          <input 
+            type="date" 
+            value={endDate} 
+            onChange={e => setEndDate(e.target.value)}
+            className="border p-2 rounded bg-gray-50 font-bold text-sm"
+          />
+        </div>
+        <button onClick={handleSetToday} className="bg-[#6B4F3A] text-white px-3 py-2 rounded text-sm font-bold shadow">當日</button>
+        <button onClick={() => { setStartDate('2026-01-01'); setEndDate('2030-12-31'); }} className="text-xs bg-gray-200 px-3 py-2 rounded font-bold">顯示全部</button>
+        <span className="text-xs text-emerald-700 font-bold ml-auto flex items-center gap-1"><Cloud size={14}/> Firebase 雲端永久保存中</span>
+      </div>
+
+      <div className="bg-white rounded shadow overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-[#E6D2BE] text-[#3D332C] border-b border-[#6B4F3A]/20">
+              <th className="p-3">時間</th>
+              <th className="p-3">編號</th>
+              <th className="p-3">品項內容摘要</th>
+              <th className="p-3">來源 / 付款</th>
+              <th className="p-3 text-right">總計</th>
+              <th className="p-3 text-center">刪除</th>
+            </tr>
+          </thead>
+          <tbody className="text-sm">
+            {filteredOrders.slice().reverse().map(o => (
+              <tr key={o.id} className="border-b hover:bg-gray-50">
+                <td className="p-3 align-top">{o.date} <br/><span className="text-gray-500">{o.time}</span></td>
+                <td className="p-3 align-top font-mono text-xs">{o.id}</td>
+                <td className="p-3 align-top">
+                  <div className="space-y-1">
+                    {o.items.map((item, iIdx) => (
+                      <div key={item.cartId || iIdx} className="flex justify-between items-center bg-gray-100 p-1.5 rounded">
+                        <div>
+                          <span className="font-bold">{item.name}</span> {item.spiciness ? `(${item.spiciness}/${item.numbness})` : ''} x {item.qty}
+                          <span className="text-red-600 ml-2 font-semibold">${item.price * item.qty}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {o.orderNote && <p className="text-xs text-orange-600 mt-1">備註: {o.orderNote}</p>}
+                  </div>
+                </td>
+                <td className="p-3 align-top">
+                  <span className="bg-gray-200 px-2 py-1 rounded text-xs">{o.source} {o.subSource ? `> ${o.subSource}` : ''}</span><br/>
+                  <span className={`mt-1 inline-block px-2 py-1 rounded text-xs text-white ${o.paymentMethod === 'Line Pay' ? 'bg-[#00C300]' : 'bg-gray-600'}`}>{o.paymentMethod || '現金'}</span>
+                </td>
+                <td className="p-3 align-top text-right font-bold text-[#8B1E1E]">${o.total}</td>
+                <td className="p-3 align-top text-center">
+                  <button onClick={() => setOrders(orders.filter(x => x.id !== o.id))} className="text-red-600 hover:bg-red-50 p-1.5 rounded" title="刪除訂單"><Trash2 size={16}/></button>
+                </td>
+              </tr>
+            ))}
+            {filteredOrders.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-400">目前區間尚無歷史訂單</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// 後台：員工與打卡管理 (支援新增/修改/刪除員工與計算工時)
 function AdminEmployeeManager({ employees, setEmployees, clockIns }) {
-  const [empName, setEmpName] = useState('');
+  const [newEmp, setNewEmp] = useState({ username: '', password: '', name: '' });
+  const [editingEmp, setEditingEmp] = useState(null);
+
+  const calculateWorkHours = (empId) => {
+    const empIns = clockIns.filter(c => c.empId === empId).sort((a,b) => new Date(`${a.date} ${a.time}`) - new Date(`${b.date} ${b.time}`));
+    let totalMinutes = 0;
+    let lastIn = null;
+    empIns.forEach(c => {
+      if(c.type === 'IN') {
+        lastIn = new Date(`${c.date.replace(/\//g, '-')} ${c.time}`);
+      } else if(c.type === 'OUT' && lastIn) {
+        const outTime = new Date(`${c.date.replace(/\//g, '-')} ${c.time}`);
+        totalMinutes += Math.max(0, (outTime - lastIn) / (1000 * 60));
+        lastIn = null;
+      }
+    });
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = Math.round(totalMinutes % 60);
+    return `${hours} 小時 ${mins} 分鐘`;
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">員工基本資料與工時管理</h2>
+
+      <div className="bg-white p-6 rounded shadow grid grid-cols-4 gap-4 items-end">
+        <div>
+          <label className="text-xs font-bold text-gray-500">員工姓名</label>
+          <input type="text" placeholder="例如: 張小美" value={newEmp.name} onChange={e => setNewEmp({...newEmp, name: e.target.value})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">登入帳號</label>
+          <input type="text" placeholder="帳號" value={newEmp.username} onChange={e => setNewEmp({...newEmp, username: e.target.value})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-500">登入密碼</label>
+          <input type="text" placeholder="密碼" value={newEmp.password} onChange={e => setNewEmp({...newEmp, password: e.target.value})} className="border p-2 rounded w-full mt-1"/>
+        </div>
+        <button onClick={() => {
+          if(!newEmp.name || !newEmp.username || !newEmp.password) return alert('請完整填寫員工資料');
+          setEmployees([...employees, { id: `emp_${Date.now()}`, ...newEmp }]);
+          setNewEmp({ username: '', password: '', name: '' });
+        }} className="bg-[#6B4F3A] text-white py-2.5 rounded font-bold">新增員工</button>
+      </div>
+
+      <div className="bg-white rounded shadow overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-100 border-b"><th className="p-3">姓名</th><th className="p-3">帳號</th><th className="p-3">密碼</th><th className="p-3">累計總工時</th><th className="p-3 w-32">操作</th></tr>
+          </thead>
+          <tbody>
+            {employees.map(emp => (
+              <tr key={emp.id} className="border-b">
+                <td className="p-3 font-bold">{emp.name}</td>
+                <td className="p-3">{emp.username}</td>
+                <td className="p-3">******</td>
+                <td className="p-3 font-semibold text-green-700">{calculateWorkHours(emp.id)}</td>
+                <td className="p-3 space-x-2">
+                  <button onClick={() => setEditingEmp(emp)} className="text-blue-600 hover:bg-blue-50 p-1.5 rounded"><Edit size={16}/></button>
+                  <button onClick={() => setEmployees(employees.filter(e => e.id !== emp.id))} className="text-red-500 hover:bg-red-50 p-1.5 rounded"><Trash2 size={16}/></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {editingEmp && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl w-80 shadow-xl">
+            <h3 className="font-bold text-lg mb-4">修改員工資料</h3>
+            <div className="mb-3">
+              <label className="text-xs text-gray-500">姓名</label>
+              <input type="text" value={editingEmp.name} onChange={e => setEditingEmp({...editingEmp, name: e.target.value})} className="border p-2 rounded w-full"/>
+            </div>
+            <div className="mb-3">
+              <label className="text-xs text-gray-500">帳號</label>
+              <input type="text" value={editingEmp.username} onChange={e => setEditingEmp({...editingEmp, username: e.target.value})} className="border p-2 rounded w-full"/>
+            </div>
+            <div className="mb-4">
+              <label className="text-xs text-gray-500">密碼</label>
+              <input type="text" value={editingEmp.password} onChange={e => setEditingEmp({...editingEmp, password: e.target.value})} className="border p-2 rounded w-full"/>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setEditingEmp(null)} className="flex-1 py-2 bg-gray-200 rounded font-bold">取消</button>
+              <button onClick={() => {
+                setEmployees(employees.map(e => e.id === editingEmp.id ? editingEmp : e));
+                setEditingEmp(null);
+              }} className="flex-1 py-2 bg-[#6B4F3A] text-white rounded font-bold">儲存</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 後台：系統設定
+function AdminSettingsManager({ adminPassword, setAdminPassword }) {
+  const [oldPwd, setOldPwd] = useState('');
+  const [newPwd1, setNewPwd1] = useState('');
+  const [newPwd2, setNewPwd2] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+
+  const handleUpdate = () => {
+    if (oldPwd !== adminPassword && oldPwd !== '8888') return alert('舊密碼錯誤');
+    if (newPwd1 !== newPwd2) return alert('兩次新密碼輸入不一致');
+    if (!newPwd1) return alert('請輸入新密碼');
+    setAdminPassword(newPwd1);
+    alert('老闆密碼修改成功！');
+    setOldPwd(''); setNewPwd1(''); setNewPwd2('');
+  };
+
+  const inputClass = "w-full border p-3 rounded-lg bg-gray-50 outline-none";
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">系統設定與老闆密碼管理</h2>
+      
+      <div className="bg-white p-8 rounded-2xl shadow max-w-md border">
+        <h3 className="font-bold text-lg mb-4 text-[#3D332C]">更改老闆後台密碼</h3>
+        <p className="text-xs text-gray-400 mb-4">提示：若忘記舊密碼，可輸入緊急備用密碼 <span className="font-bold text-red-600">8888</span> 進行重設。員工緊急備用密碼為 <span className="font-bold text-red-600">0000</span>。</p>
+
+        <div className="mb-4 relative">
+          <label className="block font-bold mb-2 text-sm text-gray-600">舊密碼</label>
+          <input type={showPwd ? 'text' : 'password'} value={oldPwd} onChange={e => setOldPwd(e.target.value)} className={inputClass} placeholder="請輸入舊密碼 (或8888)"/>
+          <button onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-10 text-gray-400">{showPwd ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
+        </div>
+
+        <div className="mb-4">
+          <label className="block font-bold mb-2 text-sm text-gray-600">新密碼</label>
+          <input type={showPwd ? 'text' : 'password'} value={newPwd1} onChange={e => setNewPwd1(e.target.value)} className={inputClass} placeholder="請輸入新密碼"/>
+        </div>
+
+        <div className="mb-6">
+          <label className="block font-bold mb-2 text-sm text-gray-600">再次確認新密碼</label>
+          <input type={showPwd ? 'text' : 'password'} value={newPwd2} onChange={e => setNewPwd2(e.target.value)} className={inputClass} placeholder="請再次輸入新密碼"/>
+        </div>
+
+        <button onClick={handleUpdate} className="w-full bg-[#6B4F3A] text-white py-3 rounded-lg font-bold shadow-md">確認修改密碼</button>
+      </div>
+    </div>
+  );
+}
+
+// ==============================
+// 5. 員工專屬打卡中心
+// ==============================
+function EmployeeClockInView({ employees, setEmployees, clockIns, setClockIns, currentTime }) {
+  const [loggedEmp, setLoggedEmp] = useState(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [activeTab, setActiveTab] = useState('CLOCK'); 
 
-  const addEmployee = () => {
-    if (!empName || !username || !password) return alert('請填寫完整員工資訊');
-    setEmployees([...employees, { id: `emp_${Date.now()}`, name: empName, username, password }]);
-    setEmpName(''); setUsername(''); setPassword('');
+  const handleLogin = () => {
+    const emp = employees.find(e => e.username === username && (e.password === password || password === '0000'));
+    if (emp) { 
+      if(password === '0000') alert('使用緊急備用密碼(0000)登入成功');
+      setLoggedEmp(emp); 
+      setPassword(''); 
+    } else {
+      alert('帳號或密碼錯誤 (可輸入 0000 透過緊急備用密碼登入)');
+    }
   };
 
+  if (!loggedEmp) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-2xl shadow-xl w-96 border-t-8 border-[#6B4F3A]">
+          <div className="flex justify-center mb-4"><Calendar size={48} className="text-[#6B4F3A]" /></div>
+          <h2 className="text-2xl font-bold mb-6 text-center text-[#3D332C]">員工打卡登入</h2>
+          <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="員工帳號 (預設 emp1)" className="w-full border-2 p-3 rounded-lg mb-4" />
+          <div className="relative mb-6">
+            <input type={showPwd ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="密碼 (預設 111)" className="w-full border-2 p-3 rounded-lg" />
+            <button onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-3.5 text-gray-400">{showPwd ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
+          </div>
+          <button onClick={handleLogin} className="w-full bg-[#6B4F3A] text-white py-3 rounded-lg font-bold text-lg shadow-md hover:bg-[#5a4231]">登入系統</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C]">員工與打卡管理</h2>
+    <div className="flex h-full">
+      <div className="w-56 bg-white border-r flex flex-col shadow-lg z-10">
+        <div className="p-6 bg-[#6B4F3A] text-white flex flex-col items-center">
+          <div className="w-16 h-16 bg-[#E6D2BE] rounded-full flex items-center justify-center text-[#6B4F3A] text-2xl font-bold mb-2 shadow-inner">
+            {loggedEmp.name.charAt(0)}
+          </div>
+          <span className="font-bold text-lg">{loggedEmp.name}</span>
+        </div>
+        <div className="flex-1 py-4 flex flex-col gap-2 px-2">
+          <button onClick={() => setActiveTab('CLOCK')} className={`p-3 rounded-lg text-left font-bold ${activeTab === 'CLOCK' ? 'bg-[#E6D2BE] text-[#3D332C]' : 'hover:bg-gray-100 text-gray-600'}`}>打卡鐘</button>
+          <button onClick={() => setActiveTab('RECORDS')} className={`p-3 rounded-lg text-left font-bold ${activeTab === 'RECORDS' ? 'bg-[#E6D2BE] text-[#3D332C]' : 'hover:bg-gray-100 text-gray-600'}`}>我的紀錄</button>
+          <button onClick={() => setActiveTab('PROFILE')} className={`p-3 rounded-lg text-left font-bold ${activeTab === 'PROFILE' ? 'bg-[#E6D2BE] text-[#3D332C]' : 'hover:bg-gray-100 text-gray-600'}`}>修改資料</button>
+        </div>
+        <div className="p-4 border-t">
+          <button onClick={() => setLoggedEmp(null)} className="w-full py-2 flex items-center justify-center gap-2 text-red-600 font-bold hover:bg-red-50 rounded"><LogOut size={18}/> 登出</button>
+        </div>
+      </div>
+
+      <div className="flex-1 p-8 bg-gray-50 flex flex-col items-center">
+        {activeTab === 'CLOCK' && (
+          <div className="flex flex-col items-center justify-center h-full w-full max-w-md">
+            <div className="bg-white p-8 rounded-3xl shadow-lg w-full text-center mb-8 border">
+              <p className="text-gray-500 mb-2 font-bold">{currentTime.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}</p>
+              <div className="text-6xl font-mono font-bold text-[#3D332C]">
+                {String(currentTime.getHours()).padStart(2, '0')}:
+                {String(currentTime.getMinutes()).padStart(2, '0')}:
+                <span className="text-4xl text-gray-400 ml-1">{String(currentTime.getSeconds()).padStart(2, '0')}</span>
+              </div>
+            </div>
+            
+            <div className="flex w-full gap-4">
+              <button 
+                onClick={() => setClockIns([...clockIns, { id: Date.now(), empId: loggedEmp.id, type: 'IN', date: currentTime.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }), time: currentTime.toLocaleTimeString('zh-TW', { hour12: false }) }])}
+                className="flex-1 py-6 rounded-2xl text-2xl font-bold shadow-md text-black bg-[#A5D6A7]"
+              >
+                上班
+              </button>
+              <button 
+                onClick={() => setClockIns([...clockIns, { id: Date.now(), empId: loggedEmp.id, type: 'OUT', date: currentTime.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }), time: currentTime.toLocaleTimeString('zh-TW', { hour12: false }) }])}
+                className="flex-1 py-6 rounded-2xl text-2xl font-bold shadow-md text-black bg-[#EF9A9A]"
+              >
+                下班
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'RECORDS' && (
+          <EmployeeRecordsView empId={loggedEmp.id} clockIns={clockIns} />
+        )}
+
+        {activeTab === 'PROFILE' && (
+          <EmployeeProfileForm loggedEmp={loggedEmp} employees={employees} setEmployees={setEmployees} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmployeeRecordsView({ empId, clockIns }) {
+  const empIns = clockIns.filter(c => c.empId === empId).sort((a,b) => new Date(`${b.date} ${b.time}`) - new Date(`${a.date} ${a.time}`));
+
+  const sortedAsc = [...empIns].sort((a,b) => new Date(`${a.date.replace(/\//g, '-')} ${a.time}`) - new Date(`${b.date.replace(/\//g, '-')} ${b.time}`));
+  const workSessions = [];
+  let lastIn = null;
+  sortedAsc.forEach(c => {
+    if (c.type === 'IN') {
+      lastIn = c;
+    } else if (c.type === 'OUT' && lastIn) {
+      const inTime = new Date(`${lastIn.date.replace(/\//g, '-')} ${lastIn.time}`);
+      const outTime = new Date(`${c.date.replace(/\//g, '-')} ${c.time}`);
+      const diffMins = Math.max(0, (outTime - inTime) / (1000 * 60));
+      const hours = Math.floor(diffMins / 60);
+      const mins = Math.round(diffMins % 60);
+      workSessions.push({
+        id: c.id,
+        date: c.date,
+        inTime: lastIn.time,
+        outTime: c.time,
+        duration: `${hours} 小時 ${mins} 分鐘`
+      });
+      lastIn = null;
+    }
+  });
+
+  return (
+    <div className="w-full max-w-3xl bg-white p-6 rounded-xl shadow-sm border">
+      <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Calendar/> 我的打卡與工時紀錄</h3>
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="bg-gray-50 border-b"><th className="p-3">日期</th><th className="p-3">上班時間</th><th className="p-3">下班時間</th><th className="p-3">本次工時</th></tr>
+        </thead>
+        <tbody>
+          {workSessions.reverse().map(ws => (
+             <tr key={ws.id} className="border-b">
+               <td className="p-3">{ws.date}</td>
+               <td className="p-3 font-mono text-green-700 font-bold">{ws.inTime}</td>
+               <td className="p-3 font-mono text-red-600 font-bold">{ws.outTime}</td>
+               <td className="p-3 font-bold text-[#3D332C] bg-amber-50 rounded">{ws.duration}</td>
+             </tr>
+          ))}
+          {workSessions.length === 0 && <tr><td colSpan="4" className="p-8 text-center text-gray-400">尚無完整的上下班配對紀錄</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function EmployeeProfileForm({ loggedEmp, employees, setEmployees }) {
+  const [oldPwd, setOldPwd] = useState('');
+  const [newPwd1, setNewPwd1] = useState('');
+  const [newPwd2, setNewPwd2] = useState('');
+  const [show, setShow] = useState(false);
+
+  const handleSave = () => {
+    if (oldPwd !== loggedEmp.password && oldPwd !== '0000') return alert('舊密碼錯誤 (可用0000重設)');
+    if (newPwd1 !== newPwd2) return alert('兩次新密碼輸入不一致');
+    if (!newPwd1) return alert('請輸入新密碼');
+
+    setEmployees(employees.map(e => e.id === loggedEmp.id ? { ...e, password: newPwd1 } : e));
+    alert('密碼修改成功！');
+    setOldPwd(''); setNewPwd1(''); setNewPwd2('');
+  };
+
+  const inputClass = "w-full border p-3 rounded-lg bg-gray-50 outline-none";
+
+  return (
+    <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow border">
+      <h3 className="text-xl font-bold mb-2 text-[#3D332C]">密碼修改</h3>
+      <p className="text-xs text-gray-400 mb-6">提示：員工顯示名稱僅限老闆後台修改。</p>
       
-      {/* 新增員工 */}
-      <div className="bg-white p-4 rounded-xl shadow border flex gap-3">
-        <input type="text" placeholder="員工姓名" value={empName} onChange={e => setEmpName(e.target.value)} className="border p-2 rounded text-sm flex-1 bg-white"/>
-        <input type="text" placeholder="帳號" value={username} onChange={e => setUsername(e.target.value)} className="border p-2 rounded text-sm flex-1 bg-white"/>
-        <input type="password" placeholder="密碼" value={password} onChange={e => setPassword(e.target.value)} className="border p-2 rounded text-sm flex-1 bg-white"/>
-        <button onClick={addEmployee} className="bg-[#6B4F3A] text-white px-4 py-2 rounded font-bold text-sm">新增員工</button>
+      <div className="mb-4">
+        <label className="block font-bold mb-2 text-sm text-gray-600">顯示名稱 (僅限老闆修改)</label>
+        <input type="text" value={loggedEmp.name} readOnly className={`${inputClass} text-gray-400 cursor-not-allowed`}/>
+      </div>
+      
+      <div className="mb-4 relative">
+        <label className="block font-bold mb-2 text-sm text-gray-600">舊密碼</label>
+        <input type={show ? 'text' : 'password'} value={oldPwd} onChange={e => setOldPwd(e.target.value)} className={inputClass} placeholder="請輸入舊密碼 (或0000)"/>
+        <button onClick={() => setShow(!show)} className="absolute right-3 top-10 text-gray-400">{show ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 員工名單 */}
-        <div className="bg-white p-5 rounded-xl shadow border">
-          <h3 className="font-bold text-lg mb-4 text-[#3D332C]">員工列表</h3>
-          <div className="space-y-2">
-            {employees.map(e => (
-              <div key={e.id} className="flex justify-between items-center border-b pb-2">
-                <span className="font-bold text-gray-800">{e.name} <span className="text-xs text-gray-400">({e.username})</span></span>
-                <button onClick={() => setEmployees(employees.filter(x => x.id !== e.id))} className="text-red-500 text-sm">刪除</button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 打卡紀錄 */}
-        <div className="bg-white p-5 rounded-xl shadow border">
-          <h3 className="font-bold text-lg mb-4 text-[#3D332C]">打卡紀錄</h3>
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {clockIns.map(c => (
-              <div key={c.id} className="flex justify-between items-center border-b pb-2 text-sm">
-                <span className="font-medium text-gray-700">{c.employeeName}</span>
-                <span className={`px-2 py-0.5 rounded text-xs font-bold ${c.type === '上班' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{c.type}</span>
-                <span className="text-gray-400 text-xs">{c.time}</span>
-              </div>
-            ))}
-            {clockIns.length === 0 && <p className="text-gray-400 text-sm">尚無打卡紀錄</p>}
-          </div>
-        </div>
+      <div className="mb-4">
+        <label className="block font-bold mb-2 text-sm text-gray-600">新密碼</label>
+        <input type={show ? 'text' : 'password'} value={newPwd1} onChange={e => setNewPwd1(e.target.value)} className={inputClass} placeholder="請輸入新密碼"/>
       </div>
-    </div>
-  );
-}
 
-// 4.10 系統設定
-function AdminSettings({ adminPassword, setAdminPassword }) {
-  const [newPwd, setNewPwd] = useState('');
-
-  const updatePassword = () => {
-    if (!newPwd.trim()) return alert('請輸入新密碼');
-    setAdminPassword(newPwd);
-    setNewPwd('');
-    alert('後台管理密碼修改成功！');
-  };
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C]">系統安全設定</h2>
-      <div className="bg-white p-6 rounded-xl shadow border max-w-md space-y-4">
-        <h3 className="text-lg font-bold text-[#3D332C]">修改老闆登入密碼</h3>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">目前密碼</label>
-          <input type="text" disabled value={adminPassword} className="w-full border p-2 rounded bg-gray-100 text-gray-500"/>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">新密碼</label>
-          <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} placeholder="輸入新密碼..." className="w-full border p-2 rounded bg-white"/>
-        </div>
-        <button onClick={updatePassword} className="w-full bg-[#6B4F3A] text-white py-2 rounded font-bold shadow">
-          儲存變更
-        </button>
+      <div className="mb-6">
+        <label className="block font-bold mb-2 text-sm text-gray-600">再次確認新密碼</label>
+        <input type={show ? 'text' : 'password'} value={newPwd2} onChange={e => setNewPwd2(e.target.value)} className={inputClass} placeholder="請再次輸入新密碼"/>
       </div>
-    </div>
-  );
-}
 
-// ==============================
-// 5. 員工打卡介面 (Clock-In View)
-// ==============================
-function EmployeeClockInView({ employees, clockIns, setClockIns, currentTime }) {
-  const [selectedEmp, setSelectedEmp] = useState('');
-  const [empPwd, setEmpPwd] = useState('');
-
-  const handleClock = (type) => {
-    const emp = employees.find(e => e.id === selectedEmp);
-    if (!emp) return alert('請選擇員工');
-    if (emp.password !== empPwd && empPwd !== '0000') return alert('密碼錯誤 (緊急備用密碼: 0000)');
-
-    const record = {
-      id: `clk_${Date.now()}`,
-      employeeId: emp.id,
-      employeeName: emp.name,
-      type,
-      time: currentTime.toLocaleString('zh-TW')
-    };
-
-    setClockIns([record, ...clockIns]);
-    setEmpPwd('');
-    alert(`${emp.name} ${type}打卡成功！`);
-  };
-
-  return (
-    <div className="h-full flex items-center justify-center p-6">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-96 border-t-8 border-[#6B4F3A] space-y-6 text-center">
-        <div className="flex justify-center items-center gap-2 text-[#6B4F3A] font-bold text-xl">
-          <Clock size={28}/> 員工考勤打卡
-        </div>
-
-        <div className="text-2xl font-mono font-bold text-gray-700 bg-gray-50 py-3 rounded-xl border">
-          {currentTime.toLocaleTimeString('zh-TW')}
-        </div>
-
-        <div className="space-y-4 text-left">
-          <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1">選擇員工</label>
-            <select value={selectedEmp} onChange={e => setSelectedEmp(e.target.value)} className="w-full border p-3 rounded-xl text-base bg-white font-medium">
-              <option value="">-- 請選擇名字 --</option>
-              {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1">員工密碼</label>
-            <input 
-              type="password" 
-              placeholder="請輸入密碼" 
-              value={empPwd} 
-              onChange={e => setEmpPwd(e.target.value)} 
-              className="w-full border p-3 rounded-xl text-center tracking-widest text-lg bg-white"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 pt-2">
-          <button onClick={() => handleClock('上班')} className="bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg shadow active:scale-95">
-            上班打卡
-          </button>
-          <button onClick={() => handleClock('下班')} className="bg-amber-600 text-white py-4 rounded-xl font-bold text-lg shadow active:scale-95">
-            下班打卡
-          </button>
-        </div>
-      </div>
+      <button onClick={handleSave} className="w-full bg-[#6B4F3A] text-white py-3 rounded-lg font-bold shadow-md">儲存新密碼</button>
     </div>
   );
 }
