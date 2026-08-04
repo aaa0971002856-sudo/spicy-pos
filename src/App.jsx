@@ -9,7 +9,7 @@ import {
 // ==============================
 const CHINESE_NUMBERS = ['第一名', '第二名', '第三名', '第四名', '第五名'];
 
-// 預設菜單資料（若 localStorage 無資料時使用）
+// 預設菜單資料（僅在第一次開啟、localStorage 完全無資料時作為初始化使用）
 const DEFAULT_CATEGORIES = [
   {
     id: 'cat_1',
@@ -49,7 +49,7 @@ const DEFAULT_EMPLOYEES = [
   { id: 'emp_2', name: '店員 A', username: 'staff1', password: '123' }
 ];
 
-// 自訂 Hook：資料連動 localStorage 實現永久儲存
+// 自訂 Hook：讓資料連動 localStorage 實現永久儲存
 function useLocalStorageState(key, defaultValue) {
   const [state, setState] = useState(() => {
     try {
@@ -81,7 +81,7 @@ export default function App() {
   const [currentMode, setCurrentMode] = useState('POS'); // 'POS' | 'ADMIN' | 'CLOCK_IN'
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // 持久化 State 宣告
+  // 持久化 State 宣告 (任何修改都會自動寫入瀏覽器 LocalStorage)
   const [categories, setCategories] = useLocalStorageState('pos_categories', DEFAULT_CATEGORIES);
   const [orders, setOrders] = useLocalStorageState('pos_orders', []);
   const [promotions, setPromotions] = useLocalStorageState('pos_promotions', []);
@@ -669,10 +669,11 @@ function AdminReports({ orders }) {
   );
 }
 
-// 4.3 菜單管理 (修改即刻連動永久儲存)
+// 4.3 菜單管理
 function AdminMenuManager({ categories, setCategories }) {
   const [newCatName, setNewCatName] = useState('');
   const [editingCatId, setEditingCatId] = useState(null);
+
   const [newItem, setNewItem] = useState({ name: '', price: '' });
 
   const addCategory = () => {
@@ -714,6 +715,7 @@ function AdminMenuManager({ categories, setCategories }) {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-[#3D332C]">菜單品項管理</h2>
       
+      {/* 新增分類 */}
       <div className="bg-white p-4 rounded-xl shadow border flex gap-3">
         <input 
           type="text" 
@@ -727,6 +729,7 @@ function AdminMenuManager({ categories, setCategories }) {
         </button>
       </div>
 
+      {/* 分類與品項列表 */}
       <div className="space-y-4">
         {categories.map(cat => (
           <div key={cat.id} className="bg-white p-5 rounded-xl shadow border">
@@ -737,6 +740,7 @@ function AdminMenuManager({ categories, setCategories }) {
               </button>
             </div>
 
+            {/* 品項清單 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
               {cat.items.map(item => (
                 <div key={item.id} className="flex justify-between items-center border p-3 rounded-lg bg-gray-50">
@@ -751,6 +755,7 @@ function AdminMenuManager({ categories, setCategories }) {
               ))}
             </div>
 
+            {/* 新增品項輸入區 */}
             <div className="flex gap-2 pt-2 border-t">
               <input 
                 type="text" 
@@ -832,7 +837,7 @@ function AdminPromoManager({ promotions, setPromotions }) {
   );
 }
 
-// 4.5 庫存管理
+// 4.5 進貨與庫存
 function AdminInventoryManager({ ingredients, setIngredients }) {
   const [ingName, setIngName] = useState('');
   const [stock, setStock] = useState('');
@@ -966,7 +971,7 @@ function AdminExpenseManager({ expenses, setExpenses }) {
   );
 }
 
-// 4.7 每日關帳
+// 4.7 每日關帳作業
 function AdminClosingManager({ orders, expenses, closingRecords, setClosingRecords }) {
   const totalIncome = orders.reduce((sum, o) => sum + o.total, 0);
   const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -1101,6 +1106,7 @@ function AdminEmployeeManager({ employees, setEmployees, clockIns }) {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-[#3D332C]">員工與打卡管理</h2>
       
+      {/* 新增員工 */}
       <div className="bg-white p-4 rounded-xl shadow border flex gap-3">
         <input type="text" placeholder="員工姓名" value={empName} onChange={e => setEmpName(e.target.value)} className="border p-2 rounded text-sm flex-1 bg-white"/>
         <input type="text" placeholder="帳號" value={username} onChange={e => setUsername(e.target.value)} className="border p-2 rounded text-sm flex-1 bg-white"/>
@@ -1109,6 +1115,7 @@ function AdminEmployeeManager({ employees, setEmployees, clockIns }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* 員工名單 */}
         <div className="bg-white p-5 rounded-xl shadow border">
           <h3 className="font-bold text-lg mb-4 text-[#3D332C]">員工列表</h3>
           <div className="space-y-2">
@@ -1121,6 +1128,7 @@ function AdminEmployeeManager({ employees, setEmployees, clockIns }) {
           </div>
         </div>
 
+        {/* 打卡紀錄 */}
         <div className="bg-white p-5 rounded-xl shadow border">
           <h3 className="font-bold text-lg mb-4 text-[#3D332C]">打卡紀錄</h3>
           <div className="space-y-2 max-h-80 overflow-y-auto">
