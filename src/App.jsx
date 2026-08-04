@@ -9,42 +9,11 @@ import {
 // 1. 預設資料與共用常數
 // ==============================
 const DEFAULT_CATEGORIES = [
-  { 
-    id: 'c1', 
-    name: '套餐', 
-    color: '#E6D2BE', 
-    items: [
-      { id: 'i1', name: '招牌麻辣燙套餐', price: 150 }, 
-      { id: 'i2', name: '牛五花套餐', price: 180 }
-    ] 
-  },
-  { 
-    id: 'c2', 
-    name: '吃不飽加點', 
-    color: '#E6D2BE', 
-    items: [
-      { id: 'i3', name: '高麗菜', price: 30 }, 
-      { id: 'i4', name: '金針菇', price: 30 }
-    ] 
-  },
-  { 
-    id: 'c3', 
-    name: '吃麵麵', 
-    color: '#E6D2BE', 
-    items: [
-      { id: 'i5', name: '王子麵', price: 20 }, 
-      { id: 'i6', name: '烏龍麵', price: 25 }
-    ] 
-  },
-  { 
-    id: 'c4', 
-    name: '秘制滷味', 
-    color: '#E6D2BE', 
-    items: [
-      { id: 'i7', name: '滷大腸', price: 60 }, 
-      { id: 'i8', name: '滷牛肚', price: 80 }
-    ] 
-  }
+  { id: 'c1', name: '套餐', color: '#E6D2BE', items: [{ id: 'item_c1_1', name: '招牌麻辣燙套餐', price: 100 }, { id: 'item_c1_2', name: 'A套餐', price: 115 }, { id: 'item_c1_3', name: 'B套餐', price: 130 }, { id: 'item_c1_4', name: 'c套餐', price: 135 }, { id: 'item_c1_5', name: 'D套餐', price: 140 }, { id: 'item_c1_6', name: '老饕套餐', price: 250 }] },
+  { id: 'c2', name: '吃不飽加點1', color: '#E6D2BE', items: [{ id: 'item_c2_1', name: '牛肉片', price: 50 }, { id: 'item_c2_2', name: '梅花豬肉', price: 45 }, { id: 'item_c2_3', name: '麻辣鴨血', price: 40 }, { id: 'item_c2_4', name: '麻辣豆腐', price: 40 }, { id: 'item_c2_5', name: '魚餃', price: 25 }, { id: 'item_c2_6', name: '燕餃', price: 25 }, { id: 'item_c2_7', name: '蟹肉棒', price: 25 }, { id: 'item_c2_8', name: '米血糕', price: 25 }, { id: 'item_c2_9', name: '豆皮', price: 25 }, { id: 'item_c2_10', name: '鑫鑫腸', price: 25 }, { id: 'item_c2_11', name: '老油條', price: 35 }, { id: 'item_c2_12', name: '黃金魚蛋', price: 25 }, { id: 'item_c2_13', name: '科學麵', price: 20 }, { id: 'item_c2_14', name: '王子麵', price: 20 }] },
+  { id: 'c3', name: '吃不飽加點2(蔬菜)', color: '#E6D2BE', items: [{ id: 'item_c3_1', name: '金針菇', price: 25 }, { id: 'item_c3_2', name: '木耳', price: 20 }, { id: 'item_c3_3', name: '玉米筍', price: 25 }, { id: 'item_c3_4', name: '空心菜', price: 25 }, { id: 'item_c3_5', name: '大陸妹', price: 25 }, { id: 'item_c3_6', name: '水蓮', price: 25 }, { id: 'item_c3_7', name: '茼蒿(季節限定)', price: 25 }] },
+  { id: 'c4', name: '吃麵麵', color: '#E6D2BE', items: [{ id: 'item_c4_1', name: '牛肉乾拌麵', price: 110 }, { id: 'item_c4_2', name: '豬肉乾拌麵', price: 105 }, { id: 'item_c4_3', name: '銷魂乾拌麵', price: 60 }, { id: 'item_c4_4', name: '烏龍拌麵', price: 60 }] },
+  { id: 'c5', name: '秘制滷味', color: '#E6D2BE', items: [{ id: 'item_c5_1', name: '牛肚/牛筋/牛腱', price: 100 }, { id: 'item_c5_2', name: '大腸', price: 60 }, { id: 'item_c5_3', name: '豬耳朵', price: 40 }, { id: 'item_c5_4', name: '無骨鳳爪', price: 40 }] }
 ];
 
 const COLORS = {
