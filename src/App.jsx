@@ -8,19 +8,16 @@ import {
 // ==========================================
 // 0. Firebase 雲端服務設定 (請填入您的專案設定)
 // ==========================================
-// 若要正式連線 Firebase，請取消以下註解並填入您的 Firebase 專案設定值
-/*
-import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
-
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
+//const syncToCloud = async (dataType, data) => {
+  setIsCloudSynced(false);
+  try {
+    // 實際寫入 Firestore 資料庫
+    await setDoc(doc(db, "restaurant", dataType), { data, updatedAt: new Date() });
+    setIsCloudSynced(true);
+  } catch (error) {
+    console.error("雲端同步失敗:", error);
+    alert("雲端同步失敗，請檢查網路連線或 Firebase 權限！");
+  }
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -79,17 +76,15 @@ export default function SpicyHotPotSystem() {
 
   // 模擬/對接雲端同步函式 (可在此處換成真實 Firebase 寫入)
   const syncToCloud = async (dataType, data) => {
-    setIsCloudSynced(false);
-    try {
-      // 實際專案範例: await setDoc(doc(db, "restaurant", dataType), { data });
-      setTimeout(() => {
-        setIsCloudSynced(true);
-      }, 500);
-    } catch (error) {
-      console.error("雲端同步失敗:", error);
-    }
-  };
-
+  setIsCloudSynced(false);
+  try {
+    // 實際寫入 Firestore 資料庫
+    await setDoc(doc(db, "restaurant", dataType), { data, updatedAt: new Date() });
+    setIsCloudSynced(true);
+  } catch (error) {
+    console.error("雲端同步失敗:", error);
+    alert("雲端同步失敗，請檢查網路連線或 Firebase 權限！");
+  }
   const handleUpdateCategories = (newCats) => {
     setCategories(newCats);
     syncToCloud('categories', newCats);
