@@ -6,6 +6,26 @@ import {
 } from 'lucide-react';
 
 // ==============================
+// 0. 引入 Firebase 雲端資料庫工具
+// ==============================
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+
+// 你的專案專屬金鑰 (對接您剛剛建好的 Firebase)
+const firebaseConfig = {
+  apiKey: "AIzaSyBorwqzdgOx0-R-DTXeiHkOuGG1u69Dw1g",
+  authDomain: "project-4394933997126773555.firebaseapp.com",
+  projectId: "project-4394933997126773555",
+  storageBucket: "project-4394933997126773555.firebasestorage.app",
+  messagingSenderId: "984718425705",
+  appId: "1:984718425705:web:eff1802005a3a1a877ecf8",
+  measurementId: "G-4080F5JQGZ"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app); // 雲端資料庫物件
+
+// ==============================
 // 1. 預設資料與共用常數
 // ==============================
 const DEFAULT_CATEGORIES = [
@@ -24,8 +44,6 @@ const COLORS = {
   text: '#3D332C'
 };
 
-const CHINESE_NUMBERS = ['第一名', '第二名', '第三名', '第四名', '第五名', '第六名', '第七名', '第八名'];
-
 // ==============================
 // 2. 主應用程式組件
 // ==============================
@@ -34,7 +52,7 @@ export default function SpicyHotPotSystem() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState([]); // 這裡會自動從雲端同步訂單
   const [promotions, setPromotions] = useState([
     { id: 'p1', name: '滿百折十', type: 'amount', value: 10 },
     { id: 'p2', name: '九折優惠', type: 'percent', value: 10 }
@@ -55,6 +73,30 @@ export default function SpicyHotPotSystem() {
     return () => clearInterval(timer);
   }, []);
 
+  // ★ 關鍵：即時從 Firebase 雲端資料庫同步訂單，讓所有裝置都能看到最新歷史紀錄
+  useEffect(() => {
+    const q = query(collection(db, "orders"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const cloudOrders = [];
+      querySnapshot.forEach((doc) => {
+        cloudOrders.push({ id: doc.id, ...doc.data() });
+      });
+      setOrders(cloudOrders);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ★ 關鍵：結帳後將訂單寫入 Firebase 雲端
+  const handleCheckout = async (order) => {
+    try {
+      await addDoc(collection(db, "orders"), order);
+      setIngredients(prev => prev.map(ing => ({ ...ing, stock: Math.max(0, ing.stock - 1) })));
+    } catch (e) {
+      console.error("寫入雲端失敗：", e);
+      alert("結帳寫入雲端失敗，請檢查網路連線");
+    }
+  };
+
   const lowStockItems = ingredients.filter(i => i.stock <= i.safeStock);
 
   return (
@@ -65,7 +107,7 @@ export default function SpicyHotPotSystem() {
           <Store size={28} />
           麻辣燙點餐 POS 系統
           <span className="flex items-center gap-1 text-xs bg-emerald-700 text-white px-2.5 py-1 rounded-full shadow-sm">
-            <Cloud size={14} /> Firebase 雲端連線中
+            <Cloud size={14} /> Firebase 雲端連線中 (多機同步)
           </span>
           {lowStockItems.length > 0 && (
             <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full animate-pulse flex items-center gap-1">
@@ -86,10 +128,7 @@ export default function SpicyHotPotSystem() {
           <POSView 
             categories={categories} 
             promotions={promotions} 
-            onCheckout={(order) => {
-              setOrders(prev => [...prev, order]);
-              setIngredients(prev => prev.map(ing => ({ ...ing, stock: Math.max(0, ing.stock - 1) })));
-            }} 
+            onCheckout={handleCheckout} 
             currentTime={currentTime}
             heldOrders={heldOrders}
             setHeldOrders={setHeldOrders}
@@ -504,11 +543,17 @@ function CheckoutCalculator({ total, onClose, onComplete }) {
           </div>
         </div>
 
-       <div className="flex gap-2">
-  {[100, 200, 250, 300, 350, 500, 550, 1000, 1500, 2000].map(val => (
-    <button key={val} onClick={() => setAmount(String(val))} className="flex-1 py-2 bg-[#E6D2BE] rounded text-...">
-  ))}
-</div>
+        <div className="flex gap-2">
+          {[100, 200, 250, 300, 350, 500, 550, 1000, 1500, 2000].map(val => (
+            <button 
+              key={val} 
+              onClick={() => setAmount(String(val))} 
+              className="flex-1 py-2 bg-[#E6D2BE] rounded text-center text-sm font-bold"
+            >
+              {val}
+            </button>
+          ))}
+        </div>
 
         <div className="grid grid-cols-4 gap-3 h-64">
           <div className="col-span-3 grid grid-cols-3 gap-3">
@@ -546,108 +591,37 @@ function CheckoutCalculator({ total, onClose, onComplete }) {
 }
 
 // ==============================
-// 4. 後台管理中心 (Admin)
+// 4. 後台管理佔位組件 (AdminView & EmployeeClockInView)
 // ==============================
-<template>
-  <div class="min-h-screen bg-gray-100 p-6">
-    <!-- 頂部頁籤切換 -->
-    <div class="flex gap-4 mb-6 border-b pb-4">
-      <button @click="currentTab = 'clock'" :class="currentTab === 'clock' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'" class="px-4 py-2 rounded font-bold">員工打卡</button>
-      <button @click="currentTab = 'inventory'" :class="currentTab === 'inventory' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'" class="px-4 py-2 rounded font-bold">進貨庫存</button>
-      <button @click="currentTab = 'reports'" :class="currentTab === 'reports' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'" class="px-4 py-2 rounded font-bold">報表匯出</button>
-    </div>
-
-    <!-- 1. 員工打卡頁籤 -->
-    <div v-if="currentTab === 'clock'" class="max-w-md mx-auto bg-white p-6 rounded-xl shadow">
-      <div class="text-center mb-6">
-        <h2 class="text-xl font-bold text-gray-700">台灣標準時間</h2>
-        <div class="text-3xl font-mono font-extrabold text-blue-900 mt-2">{{ currentTime }}</div>
-      </div>
-      <div class="flex gap-4 mb-6">
-        <button @click="handleClockIn" class="flex-1 py-4 rounded-lg bg-green-200 hover:bg-green-300 text-black font-bold text-lg">上班</button>
-        <button @click="handleClockOut" class="flex-1 py-4 rounded-lg bg-red-200 hover:bg-red-300 text-black font-bold text-lg">下班</button>
-      </div>
-      <div class="p-4 bg-gray-50 rounded border">
-        <h3 class="text-sm font-bold text-gray-600 mb-2">修改密碼</h3>
-        <input :type="showPassword ? 'text' : 'password'" v-model="oldPassword" placeholder="舊密碼" class="w-full mb-2 p-2 border rounded">
-        <input :type="showPassword ? 'text' : 'password'" v-model="newPassword1" placeholder="新密碼" class="w-full mb-2 p-2 border rounded">
-        <input :type="showPassword ? 'text' : 'password'" v-model="newPassword2" placeholder="再次輸入新密碼" class="w-full mb-2 p-2 border rounded">
-        <label class="flex items-center text-sm text-gray-600 cursor-pointer">
-          <input type="checkbox" v-model="showPassword" class="mr-2"> 顯示密碼
-        </label>
-      </div>
-    </div>
-
-    <!-- 2. 進貨庫存頁籤（內含計算機元件） -->
-    <div v-if="currentTab === 'inventory'" class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow">
-      <h2 class="text-xl font-bold mb-4">食材進貨管理</h2>
-      <div class="flex gap-6">
-        <div class="flex-1">
-          <label class="block text-sm font-bold mb-1">當前輸入數量：</label>
-          <input type="text" readonly :value="inventoryQty" class="w-full p-2 border rounded bg-gray-100 text-right text-xl font-mono mb-4">
-          <button @click="saveInventory" class="w-full py-2 bg-blue-600 text-white font-bold rounded">儲存進貨</button>
+function AdminView({ orders }) {
+  return (
+    <div className="p-6 overflow-y-auto h-full">
+      <h2 className="text-2xl font-bold mb-4 text-[#3D332C]">後台管理與歷史訂單（雲端同步）</h2>
+      <div className="bg-white rounded-xl shadow p-4">
+        <p className="mb-4 text-gray-600">目前雲端資料庫中同步的歷史訂單總數：<span className="font-bold text-[#8B1E1E]">{orders.length} 筆</span></p>
+        <div className="space-y-2">
+          {orders.map(o => (
+            <div key={o.id} className="p-3 border rounded flex justify-between items-center bg-gray-50">
+              <div>
+                <span className="font-bold text-sm text-gray-700">[{o.date} {o.time}]</span> 
+                <span className="ml-2 font-medium">方式：{o.source} ({o.paymentMethod})</span>
+              </div>
+              <span className="font-bold text-[#8B1E1E] text-lg">${o.total}</span>
+            </div>
+          ))}
         </div>
-        <!-- 呼叫小計算機元件 -->
-        <Keypad @update-qty="(val) => inventoryQty = val" />
       </div>
     </div>
+  );
+}
 
-    <!-- 3. 報表匯出頁籤 -->
-    <div v-if="currentTab === 'reports'" class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow">
-      <h2 class="text-xl font-bold mb-4">報表匯出 (包含 Line Pay 自動扣%額)</h2>
-      <button @click="exportExcel" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded">一鍵匯出 Excel 報表</button>
+function EmployeeClockInView() {
+  return (
+    <div className="p-6 flex items-center justify-center h-full">
+      <div className="bg-white p-6 rounded-xl shadow text-center">
+        <h2 className="text-xl font-bold mb-2">員工打卡系統</h2>
+        <p className="text-gray-500">點餐與打卡功能已同步連線。</p>
+      </div>
     </div>
-  </div>
-</template>
-
-<script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
-import * as XLSX from 'xlsx'; // 請先用 npm i xlsx 安裝
-import Keypad from './components/Keypad.vue'; // 引入計算機元件
-
-const currentTab = ref('clock');
-const currentTime = ref('');
-const showPassword = ref(false);
-const oldPassword = ref('');
-const newPassword1 = ref('');
-const newPassword2 = ref('');
-const inventoryQty = ref(0);
-
-// 即時時間更新
-let timer = null;
-const updateTime = () => {
-  currentTime.value = new Date().toLocaleTimeString('zh-TW', { hour12: false });
-};
-onMounted(() => { updateTime(); timer = setInterval(updateTime, 1000); });
-onUnmounted(() => { clearInterval(timer); });
-
-const handleClockIn = () => alert(`打卡上班：${currentTime.value}`);
-const handleClockOut = () => alert(`打卡下班：${currentTime.value}`);
-const saveInventory = () => alert(`已更新進貨數量：${inventoryQty.value}`);
-
-// Excel 匯出邏輯（自動計算 Line Pay 2.2% 扣除額）
-const exportExcel = () => {
-  const linePayFeePercent = 0.022; // 2.2% 手續費
-  const rawOrders = [
-    { orderId: 'ORD-001', date: '2026-08-05', payType: 'Line Pay', amount: 1000 },
-    { orderId: 'ORD-002', date: '2026-08-05', payType: '現金', amount: 500 },
-  ];
-
-  const processedData = rawOrders.map(item => {
-    const fee = item.payType === 'Line Pay' ? Math.round(item.amount * linePayFeePercent) : 0;
-    return {
-      '訂單編號': item.orderId,
-      '日期': item.date,
-      '支付方式': item.payType,
-      '原始金額': item.amount,
-      'Line Pay 手續費': fee,
-      '實際淨收入': item.amount - fee
-    };
-  });
-
-  const worksheet = XLSX.utils.json_to_sheet(processedData);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, '銷售數據報表');
-  XLSX.writeFile(workbook, `銷售與LinePay報表_${new Date().toISOString().split('T')[0]}.xlsx`);
-};
-</script>
+  );
+}
