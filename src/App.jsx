@@ -504,11 +504,11 @@ function CheckoutCalculator({ total, onClose, onComplete }) {
           </div>
         </div>
 
-        <div className="flex gap-2">
-          {[100, 200, 250, 300, 350, 500, 550, 1000, 1500, 2000].map(val => (
-            <button key={val} onClick={() => setAmount(String(val))} className="flex-1 py-2 bg-[#E6D2BE] rounded text-[#3D332C] font-bold shadow-sm hover:brightness-95 border border-[#6B4F3A]/30">${val}</button>
-          ))}
-        </div>
+       <div className="flex gap-2">
+  {[100, 200, 250, 300, 350, 500, 550, 1000, 1500, 2000].map(val => (
+    <button key={val} onClick={() => setAmount(String(val))} className="flex-1 py-2 bg-[#E6D2BE] rounded text-...">
+  ))}
+</div>
 
         <div className="grid grid-cols-4 gap-3 h-64">
           <div className="col-span-3 grid grid-cols-3 gap-3">
