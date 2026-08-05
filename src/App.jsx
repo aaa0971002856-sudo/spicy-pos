@@ -5,24 +5,6 @@ import {
   ChevronRight, LogOut, Eye, EyeOff, X, ArrowUp, ArrowDown, CheckCircle, AlertTriangle, Cloud, Download
 } from 'lucide-react';
 
-// ==========================================
-// 0. Firebase 雲端服務設定 (請填入您的專案設定)
-// ==========================================
-//const syncToCloud = async (dataType, data) => {
-  setIsCloudSynced(false);
-  try {
-    // 實際寫入 Firestore 資料庫
-    await setDoc(doc(db, "restaurant", dataType), { data, updatedAt: new Date() });
-    setIsCloudSynced(true);
-  } catch (error) {
-    console.error("雲端同步失敗:", error);
-    alert("雲端同步失敗，請檢查網路連線或 Firebase 權限！");
-  }
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-*/
-
 // ==============================
 // 1. 預設資料與共用常數
 // ==============================
@@ -52,66 +34,104 @@ export default function SpicyHotPotSystem() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isCloudSynced, setIsCloudSynced] = useState(true);
 
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-  const [orders, setOrders] = useState([]);
-  const [promotions, setPromotions] = useState([
-    { id: 'p1', name: '滿百折十', type: 'amount', value: 10 },
-    { id: 'p2', name: '九折優惠', type: 'percent', value: 10 }
-  ]);
-  const [employees, setEmployees] = useState([{ id: 'e1', username: 'emp1', password: '111', name: '王小明' }]);
-  const [clockIns, setClockIns] = useState([]); 
-  const [ingredients, setIngredients] = useState([
-    { id: 'ing1', name: '高麗菜', supplier: '蔬菜大盤商', unit: 'kg', price: 40, category: '蔬菜類', stock: 15, safeStock: 5 },
-    { id: 'ing2', name: '牛五花', supplier: '肉品專賣', unit: 'kg', price: 250, category: '肉品類', stock: 3, safeStock: 5 }
-  ]);
-  const [expenses, setExpenses] = useState([]); 
-  const [closingRecords, setClosingRecords] = useState([]); 
+  // 從 localStorage 讀取初始資料，若無則使用預設值
+  const [categories, setCategories] = useState(() => {
+    const saved = localStorage.getItem('spicy_categories');
+    return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
+  });
+
+  const [orders, setOrders] = useState(() => {
+    const saved = localStorage.getItem('spicy_orders');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [promotions, setPromotions] = useState(() => {
+    const saved = localStorage.getItem('spicy_promotions');
+    return saved ? JSON.parse(saved) : [
+      { id: 'p1', name: '滿百折十', type: 'amount', value: 10 },
+      { id: 'p2', name: '九折優惠', type: 'percent', value: 10 }
+    ];
+  });
+
+  const [employees, setEmployees] = useState(() => {
+    const saved = localStorage.getItem('spicy_employees');
+    return saved ? JSON.parse(saved) : [{ id: 'e1', username: 'emp1', password: '111', name: '王小明' }];
+  });
+
+  const [clockIns, setClockIns] = useState(() => {
+    const saved = localStorage.getItem('spicy_clockIns');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [ingredients, setIngredients] = useState(() => {
+    const saved = localStorage.getItem('spicy_ingredients');
+    return saved ? JSON.parse(saved) : [
+      { id: 'ing1', name: '高麗菜', supplier: '蔬菜大盤商', unit: 'kg', price: 40, category: '蔬菜類', stock: 15, safeStock: 5 },
+      { id: 'ing2', name: '牛五花', supplier: '肉品專賣', unit: 'kg', price: 250, category: '肉品類', stock: 3, safeStock: 5 }
+    ];
+  });
+
+  const [expenses, setExpenses] = useState(() => {
+    const saved = localStorage.getItem('spicy_expenses');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [closingRecords, setClosingRecords] = useState(() => {
+    const saved = localStorage.getItem('spicy_closingRecords');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [heldOrders, setHeldOrders] = useState([]); 
-  const [adminPassword, setAdminPassword] = useState('1234'); 
+
+  const [adminPassword, setAdminPassword] = useState(() => {
+    const saved = localStorage.getItem('spicy_adminPassword');
+    return saved ? JSON.parse(saved) : '1234';
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // 模擬/對接雲端同步函式 (可在此處換成真實 Firebase 寫入)
-  const syncToCloud = async (dataType, data) => {
-  setIsCloudSynced(false);
-  try {
-    // 實際寫入 Firestore 資料庫
-    await setDoc(doc(db, "restaurant", dataType), { data, updatedAt: new Date() });
-    setIsCloudSynced(true);
-  } catch (error) {
-    console.error("雲端同步失敗:", error);
-    alert("雲端同步失敗，請檢查網路連線或 Firebase 權限！");
-  }
+  // 自動同步儲存到 localStorage
+  const saveDataToStorage = (key, data) => {
+    setIsCloudSynced(false);
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+      setTimeout(() => setIsCloudSynced(true), 300);
+    } catch (e) {
+      console.error("儲存失敗", e);
+    }
+  };
+
   const handleUpdateCategories = (newCats) => {
     setCategories(newCats);
-    syncToCloud('categories', newCats);
+    saveDataToStorage('spicy_categories', newCats);
   };
 
   const handleUpdatePromotions = (newPromos) => {
     setPromotions(newPromos);
-    syncToCloud('promotions', newPromos);
+    saveDataToStorage('spicy_promotions', newPromos);
   };
 
   const handleUpdateIngredients = (newIngs) => {
     setIngredients(newIngs);
-    syncToCloud('ingredients', newIngs);
+    saveDataToStorage('spicy_ingredients', newIngs);
   };
 
   const handleUpdateEmployees = (newEmps) => {
     setEmployees(newEmps);
-    syncToCloud('employees', newEmps);
+    saveDataToStorage('spicy_employees', newEmps);
   };
 
   const handleAddOrder = (order) => {
     const newOrders = [...orders, order];
     setOrders(newOrders);
+    saveDataToStorage('spicy_orders', newOrders);
+
     const newIngs = ingredients.map(ing => ({ ...ing, stock: Math.max(0, ing.stock - 1) }));
     setIngredients(newIngs);
-    syncToCloud('orders', newOrders);
-    syncToCloud('ingredients', newIngs);
+    saveDataToStorage('spicy_ingredients', newIngs);
   };
 
   const lowStockItems = ingredients.filter(i => i.stock <= i.safeStock);
@@ -124,7 +144,7 @@ export default function SpicyHotPotSystem() {
           <Store size={28} />
           麻辣燙點餐 POS 系統
           <span className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full shadow-sm ${isCloudSynced ? 'bg-emerald-700' : 'bg-amber-600 animate-pulse'}`}>
-            <Cloud size={14} /> {isCloudSynced ? 'Firebase 雲端已同步' : '雲端同步中...'}
+            <Cloud size={14} /> {isCloudSynced ? '資料已自動儲存' : '儲存中...'}
           </span>
           {lowStockItems.length > 0 && (
             <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full animate-pulse flex items-center gap-1">
@@ -153,21 +173,21 @@ export default function SpicyHotPotSystem() {
         )}
         {activePage === 'ADMIN' && (
           <AdminView 
-            orders={orders} setOrders={(o) => { setOrders(o); syncToCloud('orders', o); }} 
+            orders={orders} setOrders={(o) => { setOrders(o); saveDataToStorage('spicy_orders', o); }} 
             categories={categories} setCategories={handleUpdateCategories} 
             promotions={promotions} setPromotions={handleUpdatePromotions} 
             employees={employees} setEmployees={handleUpdateEmployees} 
-            clockIns={clockIns} setClockIns={(c) => { setClockIns(c); syncToCloud('clockIns', c); }} 
+            clockIns={clockIns} setClockIns={(c) => { setClockIns(c); saveDataToStorage('spicy_clockIns', c); }} 
             ingredients={ingredients} setIngredients={handleUpdateIngredients}
-            expenses={expenses} setExpenses={(e) => { setExpenses(e); syncToCloud('expenses', e); }}
-            closingRecords={closingRecords} setClosingRecords={(cr) => { setClosingRecords(cr); syncToCloud('closingRecords', cr); }}
-            adminPassword={adminPassword} setAdminPassword={(p) => { setAdminPassword(p); syncToCloud('adminPassword', p); }}
+            expenses={expenses} setExpenses={(e) => { setExpenses(e); saveDataToStorage('spicy_expenses', e); }}
+            closingRecords={closingRecords} setClosingRecords={(cr) => { setClosingRecords(cr); saveDataToStorage('spicy_closingRecords', cr); }}
+            adminPassword={adminPassword} setAdminPassword={(p) => { setAdminPassword(p); saveDataToStorage('spicy_adminPassword', p); }}
           />
         )}
         {activePage === 'CLOCK_IN' && (
           <EmployeeClockInView 
             employees={employees} setEmployees={handleUpdateEmployees} 
-            clockIns={clockIns} setClockIns={(c) => { setClockIns(c); syncToCloud('clockIns', c); }} 
+            clockIns={clockIns} setClockIns={(c) => { setClockIns(c); saveDataToStorage('spicy_clockIns', c); }} 
             currentTime={currentTime} 
           />
         )}
@@ -721,7 +741,7 @@ function AdminDashboard({ orders = [] }) {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">今日營運概況</h2>
+      <h2 className="text-2xl font-bold text-[#3D332C] border-l-4 border-[#8B1E1E] pl-3">營運概況</h2>
       <div className="grid grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow border-t-4 border-green-500">
           <p className="text-gray-500 text-sm font-bold">總營業額</p>
